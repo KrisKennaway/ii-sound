@@ -1,11 +1,6 @@
+#!/usr/bin/env python3
 import socketserver
 import sys
-import functools
-import random
-
-import numpy
-from scipy.io import wavfile
-import scipy.signal as sps
 
 PORT = 1977
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Delta modulation audio encoder.
 #
 # Models the Apple II speaker as an RC circuit with given time constant
@@ -21,8 +22,6 @@ import functools
 import librosa
 import numpy
 from eta import ETA
-
-PORT = 1977
 
 OPCODES = {
     'tick_page1': 0x00,
