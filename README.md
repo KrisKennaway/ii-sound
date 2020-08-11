@@ -2,6 +2,8 @@
 
 Delta modulation audio player for streaming audio over Ethernet, for the Apple II.
 
+**Dedicated to Woz on his 70th birthday.  Thank you for a lifetime of enjoyment exploring your wonderful creation.**
+
 Requires:
 *  Uthernet II (currently assumed to be in slot 1)
 *  Any Apple II (would probably even work with 16K)
