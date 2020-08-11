@@ -1,10 +1,36 @@
 ;
 ;  player.s
-;  rewolf
 ;
 ;  Created by Kris Kennaway on 27/07/2020.
 ;  Copyright © 2020 Kris Kennaway. All rights reserved.
 ;
+;  Delta modulation audio player for streaming audio over Ethernet (often called "BTC" in the Apple II community, after
+;  https://www.romanblack.com/picsound.htm who described various Apple II-like audio circuits and audio encoding
+;  algorithms).
+;
+;  How this works is by modeling the Apple II speaker as an RC circuit.  When we tick the speaker it inverts the voltage
+;  across it, and the speaker responds by moving asymptotically towards the new level.  With some empirical tuning of
+;  the time constant of this RC circuit, we can precisely model how the speaker will respond to voltage changes, and use
+;  this to make the speaker "trace out" our desired waveform.  We can't do this precisely so there is some left-over
+;  quantization noise that manifests as background static.
+;
+;  This player uses a 13-cycle period, i.e. about 78.7KHz sampling rate.  We could go as low as 9 cycles for the period,
+;  but there is an audible 12.6KHz harmonic that I think is due to interference between the 9 cycle period and the
+;  every-65-cycle "long cycle" of the Apple II CPU.  13 cycles evenly divides 65 so this avoids the harmonic.
+;
+;  Some other tricks used here:
+;
+;  - The minimal 9-cycle speaker loop is: STA $C030; JMP (WDATA), where we use an undocumented property of the
+;    Uthernet II: I/O registers on the WDATA don't wire up all of the address lines, so they are also accessible at
+;    other address offsets.  In particular WDATA+1 is a duplicate copy of WMODE.  In our case WMODE happens to be 0x3.
+;    This lets us use WDATA as a jump table into page 3, where we place our player code.  We then choose the network
+;    byte stream to contain the low-order byte of the target address we want to jump to next.
+;  - Since our 13-cycle period gives us 4 "spare" cycles over the minimal 9, that also lets us do a page-flipping trick
+;    to visualize the audio bitstream while playing.
+;  - As with my II-Vision streaming video+audio player, we schedule a "slow path" dispatch to occur every 2KB in the
+;    byte stream, and use this to manage the socket buffers (ACK the read 2KB and wait until at least 2KB more is
+;    available, which is usually non-blocking).  While doing this we need to maintain the 13 cycle cadence so the
+;    speaker is in a known trajectory.  We can compensate for this in the audio encoder.
 
 .proc main
 .org $c00
@@ -226,9 +252,9 @@ ERRMSG: .byte $d3,$cf,$c3,$cb,$c5,$d4,$a0,$c3,$cf,$d5,$cc,$c4,$a0,$ce,$cf,$d4,$a
 
 setup:
 ; set up dispatch table
-    LDA #<tick
+    LDA #<tick_page1
     STA $300
-    LDA #>tick
+    LDA #>tick_page1
     STA $301
     LDA #<notick_page1
     STA $302
@@ -242,7 +268,8 @@ setup:
     STA $306
     LDA #>slowpath
     STA $307
-    
+
+    ; move player code into $3xx
     LDX #0
 @0:
     LDA begin_copy_page1,X
@@ -251,16 +278,16 @@ setup:
     CPX #(end_copy_page1 - begin_copy_page1+1)
     BNE @0
 
-    ; pretty patterns
+    ; pretty colours
     STA TEXTOFF
     STA FULLSCR
 
-    LDA #$dd
+    LDA #$22
     LDX #$04
     LDY #$08
     JSR fill
-    
-    LDA #$22
+
+    LDA #$66
     LDX #$08
     LDY #$0c
     JSR fill
@@ -301,26 +328,25 @@ fill:
     RTS
 
 begin_copy_page1:
-tick: ; $300
+tick_page1: ; $300
     STA TICK
-    NOP
-    NOP
+    STA PAGE2OFF
     JMP (WDATA)
     
-notick_page1: ; $308
+notick_page1: ; $309
     STA PAGE2OFF
     NOP
     NOP
     JMP (WDATA)
     
-notick_page2: ;$310
+notick_page2: ;$311
     STA PAGE2ON
     NOP
     NOP
     JMP (WDATA)
 
 ; Quit to ProDOS
-exit: ; $318
+exit: ; $319
     INC  RESET_VECTOR+2  ; Invalidate power-up byte
     JSR  PRODOS          ; Call the MLI ($BF00)
     .BYTE $65            ; CALL TYPE = QUIT
@@ -339,10 +365,11 @@ exit_parmtable:
 ; the last 4 bytes in a 2K "TCP frame".  i.e. we can assume that we need to consume
 ; exactly 2K from the W5100 socket buffer.
 ;
-; we need to tick an even number of times at equal intervals so that
-; the speaker is back to the starting position when we exit.
-; We use 18 cycles which is a multiple of the fundamental 9 cycle period.
-slowpath: ;$328
+; While during this we need to keep ticking the speaker every 13 cycles to maintain the same
+; net position of the speaker cone.  It might be possible to compensate for some other cadence in the encoder,
+; but this risks introducing unwanted harmonics.  We end up ticking 12 times assuming we don't stall waiting for
+; the socket buffer to refill.  In that case audio is already going to be disrupted though.
+slowpath: ;$329
     STA TICK ; 4
     
     ; Save the W5100 address pointer so we can come back here later
@@ -402,13 +429,8 @@ checkrecv:
     LDA #<S0RXRSR   ; 2 Socket 0 Received Size register
     STA zpdummy ; 3
 
-    ; we might loop an unknown number of times here waiting for data
-    ; both paths have equal length and we need to tick an even number of times at the same 18 cycle
-    ; cadence to leave the speaker invariant
-    ;
-    ; 4+4+4+2+2+3 loop path
-    ; 4+4+4+2+3+2 no-loop path
-    ; XXX
+    ; we might loop an unknown number of times here waiting for data but the default should be to fall
+    ; straight through
 @0:
     STA TICK        ; 4
     STA WADRL       ; 4
@@ -419,7 +441,6 @@ checkrecv:
     CPX WDATA       ; 4 High byte of received size
 
     BCC @1          ; 2
-    ; XXX pad
     BCS @0          ; 3
     
 @1:
