@@ -33,7 +33,7 @@
 ;    speaker is in a known trajectory.  We can compensate for this in the audio encoder.
 
 .proc main
-.org $c00
+.org $2000
 
 init:
     JMP bootstrap
@@ -251,24 +251,6 @@ ERRMSG: .byte $d3,$cf,$c3,$cb,$c5,$d4,$a0,$c3,$cf,$d5,$cc,$c4,$a0,$ce,$cf,$d4,$a
     .byte $8D,$00
 
 setup:
-; set up dispatch table
-    LDA #<tick_page1
-    STA $300
-    LDA #>tick_page1
-    STA $301
-    LDA #<notick_page1
-    STA $302
-    LDA #>notick_page1
-    STA $303
-    LDA #<notick_page2
-    STA $304
-    LDA #>notick_page2
-    STA $305
-    LDA #<slowpath
-    STA $306
-    LDA #>slowpath
-    STA $307
-
     ; move player code into $3xx
     LDX #0
 @0:
@@ -326,6 +308,8 @@ fill:
     BNE @0
     PLA
     RTS
+
+; The actual player code
 
 begin_copy_page1:
 tick_page1: ; $300
@@ -462,15 +446,4 @@ checkrecv:
     STX WADRL  ; 4
     JMP (WDATA) ; 5
 end_copy_page1:
-
-; CLOSE TCP CONNECTION
-
-CLOSECONN:
-    LDA #>S0CR ; HIGH BYTE NEEDED
-    STA WADRH
-    LDA #<S0CR
-    STA WADRL
-    LDA #SCDISCON ; DISCONNECT
-    STA WDATA ; SEND COMMAND
-
 .endproc
