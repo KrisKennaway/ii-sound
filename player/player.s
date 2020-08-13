@@ -312,25 +312,43 @@ fill:
 ; The actual player code
 
 begin_copy_page1:
-tick_page1: ; $300
-    STA TICK
-    STA PAGE2OFF
-    JMP (WDATA)
-    
-notick_page1: ; $309
-    STA PAGE2OFF
-    NOP
-    NOP
-    JMP (WDATA)
-    
-notick_page2: ;$311
-    STA PAGE2ON
-    NOP
-    NOP
-    JMP (WDATA)
 
+; $300
+tick_12: ; ticks on cycle 7 of 12
+  STA zpdummy
+  STA $C030
+  JMP (WDATA)
+
+; $308
+; ticks on cycle count 2n+4 out of 2n+9, minimum 4 out of 9
+; 9, 11, 13, 15, 17
+; only need up to tick_17 because others come from combinations
+tick_n_odd:
+  NOP
+  NOP
+  NOP
+  NOP
+  STA $C030
+  JMP (WDATA)
+
+; $312
+notick_8:
+  STA zpdummy
+  JMP (WDATA)
+
+; $317
+; 2n+5 cycles, minimum 5
+; only need 5,7,9,11
+; then 13 = 8+5
+notick_n_odd:
+  NOP
+  NOP
+  NOP
+  JMP (WDATA)
+
+; $31d
 ; Quit to ProDOS
-exit: ; $319
+exit:
     INC  RESET_VECTOR+2  ; Invalidate power-up byte
     JSR  PRODOS          ; Call the MLI ($BF00)
     .BYTE $65            ; CALL TYPE = QUIT
@@ -353,7 +371,7 @@ exit_parmtable:
 ; net position of the speaker cone.  It might be possible to compensate for some other cadence in the encoder,
 ; but this risks introducing unwanted harmonics.  We end up ticking 12 times assuming we don't stall waiting for
 ; the socket buffer to refill.  In that case audio is already going to be disrupted though.
-slowpath: ;$329
+slowpath: ;$32d
     STA TICK ; 4
     
     ; Save the W5100 address pointer so we can come back here later
