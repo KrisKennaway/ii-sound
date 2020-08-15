@@ -112,7 +112,8 @@ where:
 *  `input` is the audio file to encode.  .mp3, .wav and probably others are supported.
 
 *  `step size` is the fractional movement from current voltage to target voltage that we assume the Apple II speaker is
-   making in each 13-cycle period.  A value of 500 seems to be about right for my Apple //e.
+   making during each clock cycle.  A value of 500 (i.e. moving 1/500 of the distance) seems to be about right for my
+   Apple //e.  This corresponds to a time constant of about 500us for the speaker RC circuit.
 
 *  `lookahead steps` defines how far into the future we want to look when optimizing.  This is exponentially slower
    since we have to evaluate all 2^N possible combinations of tick/no-tick.  A value of 15-20 gives good quality.
