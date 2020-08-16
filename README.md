@@ -145,7 +145,10 @@ and 65c02 (6 cycles).  This means the player will be about 10% **faster** on a 6
 quality will be off until the encoder is made aware of this and able to compensate.
 
 This might be one of the few pieces of software for which a 65c02 at the same clock speed causes a measurable
-performance degradation (adding almost a minute to playback of an 8-minute song, until I compensated for it)
+performance degradation (adding almost a minute to playback of an 8-minute song, until I compensated for it).
+
+Hat tip to Scott Duensing who noticed that my sample audio sounded "a tad slow", which turned out to be due to this
+1-cycle difference!
 
 ### Better encoding performance
 
