@@ -26,43 +26,46 @@ possible.  This includes looking some number of cycles into the future to antici
 
 The resulting bytestream directs the Apple II to follow this speaker trajectory with cycle-level precision.
 
-The actual audio playback code is small enough to fit in page 3.  i.e. would have been small enough to type in from a
-magazine back in the day (the megabytes of audio data would have been hard to type in though).  Plus, Uthernets didn't
-exist back then (although a Slinky RAM card would let you do something similar, see Future Work below).
+The actual audio playback code is small enough (~150 bytes) to fit in page 3.  i.e. would have been small enough to type
+in from a magazine back in the day.  The megabytes of audio data would have been hard to type in though ;)  Plus,
+Uthernets didn't exist back then (although a Slinky RAM card would let you do something similar, see Future Work below).
 
 # Implementation
-
-## Player
 
 The audio player uses [delta modulation](https://en.wikipedia.org/wiki/Delta_modulation) to produce the audio signal.
 
 How this works is by modeling the Apple II speaker as an [RC circuit](https://en.wikipedia.org/wiki/RC_circuit).  When
-we tick the speaker (access $C030) it inverts the applied voltage across it, and the speaker responds by moving
-asymptotically towards the new applied voltage level.  With some empirical tuning of the time constant of this RC
-circuit, we can precisely model how the Apple II speaker will respond to voltage changes, and use this to make the
-speaker "trace out" our desired waveform.  We can't do this exactly so there is some left-over quantization noise that
-manifests as background static.
+we access $C030 it inverts the applied voltage across the speaker, and the speaker responds by moving
+asymptotically towards the new applied voltage level.  Left to itself this results in an audio "tick".  With some
+empirical tuning of the time constant of this RC circuit, we can precisely model how the Apple II speaker will respond
+to voltage changes, and use this to make the speaker "trace out" our desired waveform.  We can't do this exactly --
+the speaker will zig-zag around the target waveform because we can only move it in finite steps -- so there is some
+left-over quantization noise that manifests as background static, though in our case this is barely noticeable.
 
 Delta modulation with an RC circuit is also called "BTC", after https://www.romanblack.com/picsound.htm who described
 a number of variations on these (Apple II-like) audio circuits and Delta modulation audio encoding algorithms.  See e.g.
 Oliver Schmidt's [PLAY.BTC](https://github.com/oliverschmidt/Play-BTc) for an Apple II implementation that plays from
-memory.
+memory at 33KHz
 
-The big difference with our approach is that we are able to target a 1-cycle resolution, i.e. modulate the audio at
-1MHz.  The caveat is that we once we toggle the speaker there is a "cooldown period" of 10 cycles (9 cycles on 6502)
-until we can toggle it again, though we can target any period larger than 11 (i.e. possible values are every 10, 12, 13,
-14, ... cycles).  Successive choices are independent.
+The big difference with our approach is that we are able to target a 1MHz sampling rate, i.e. manipulate the speaker
+with 1-cycle precision, by choosing how the "player opcodes" are chained together by the ethernet bytestream.
+The catch is that once we have toggled the speaker we can't toggle it again until at least 10 cycles have passed (9
+cycles on 6502), but we can pick any such interval >= 10 cycles (except for 11 cycles because of 65x02 opcode timing
+limitations).  Successive choices are independent.
 
-In other words, we are able to choose a precise sequence of clock cycles in which to toggle the speaker, but these
-cannot be spaced too close together.
+In other words, we are able to choose a precise sequence of clock cycles in which to toggle the speaker, but there is a
+"cooldown" period and these cannot be spaced too close together.
 
-This minimum period of 10 cycles is already short enough that it produces high-quality audio even if we only modulate
-the speaker at a fixed cadence of 10 cycles (i.e. at 102.4KHz), although in practice a fixed 14-cycle period gave better
-audio (10 cycles produces a quiet but audible background tone coming from some kind of harmonic).  The initial version
-of ][-Sound used this approach (and used the "spare" 4 cycles for a page-flipping trick to visualize the audio bitstream
-while playing).
+The minimum period of 10 cycles is already short enough that it produces high-quality audio even if we only modulate
+the speaker at a fixed cadence of 10 cycles (i.e. at 102.4KHz instead of 1MHz), although in practice a fixed 14-cycle
+period gave better quality (10 cycles produces a quiet but audible background tone coming from some kind of harmonic --
+perhaps an interaction with the every-64-cycle "long cycle" of the Apple II).  The initial version of ][-Sound used this
+approach (and also used the "spare" 4 cycles for a page-flipping trick to visualize the audio bitstream while playing).
 
-The player consists of some ethernet setup code and a core playback loop of "player opcodes", which are the 
+## Player
+
+The player consists of some ethernet setup code and a core playback loop of "player opcodes", which are the basic
+operations that are dispatched to by the bytestream.
 
 Some other tricks used here:
 
@@ -80,8 +83,8 @@ Some other tricks used here:
 
 - As with my [\]\[-Vision](https://github.com/KrisKennaway/ii-vision) streaming video+audio player, we schedule a "slow
   path" dispatch to occur every 2KB in the byte stream, and use this to manage the socket buffers (ACK the read 2KB and
-  wait until at least 2KB more is available, which is usually non-blocking).  While doing this we need to maintain the
-  13 cycle cadence so the speaker is in a known trajectory.  We can compensate for this in the audio encoder.
+  wait until at least 2KB more is available, which is usually non-blocking).  While doing this we need to maintain a
+  regular tick cadence so the speaker is in a known trajectory.  We can compensate for this in the audio encoder.
 
 ## Encoding
 
@@ -98,7 +101,7 @@ choose to schedule during this cycle window.  This makes the encoding exponentia
 it allows us to e.g. anticipate large amplitude changes by pre-moving the speaker to better approximate them.
 
 This also needs to take into account scheduling the "slow path" every 2048 output bytes, where the Apple II will manage
-the TCP socket buffer while ticking the speaker at a constant cadence (currently chosen to be every 13 cycles).  Since
+the TCP socket buffer while ticking the speaker at a constant cadence (currently chosen to be every 14 cycles).  Since
 we know this is happening we can compensate for it, i.e. look ahead to this upcoming slow path and pre-position the
 speaker so that it introduces the least error during this "dead" period when we're keeping the speaker in a net-neutral
 position.
@@ -115,8 +118,9 @@ where:
    making during each clock cycle.  A value of 500 (i.e. moving 1/500 of the distance) seems to be about right for my
    Apple //e.  This corresponds to a time constant of about 500us for the speaker RC circuit.
 
-*  `lookahead steps` defines how far into the future we want to look when optimizing.  This is exponentially slower
-   since we have to evaluate all 2^N possible combinations of tick/no-tick.  A value of 15-20 gives good quality.
+*  `lookahead steps` defines how many cycles into the future we want to look when optimizing.  This is exponentially
+   slower since we have to evaluate all possible sequences of player opcodes that could be chosen within the lookahead
+   horizon.  A value of 20 gives good quality.
 
 *  `output.a2s` is the output file to write to.
 
@@ -137,7 +141,7 @@ Hard-coding the ethernet config is not especially user friendly.  This should be
 ### 6502 support
 
 The player relies heavily on the JMP (indirect) 6502 opcode, which has a different cycle count on the 6502 (5 cycles)
-and 65c02 (6 cycles).  This means the player will be about 10% faster on a 6502 (e.g. II+, Unenhanced //e), but audio
+and 65c02 (6 cycles).  This means the player will be about 10% **faster** on a 6502 (e.g. II+, Unenhanced //e), but audio
 quality will be off until the encoder is made aware of this and able to compensate.
 
 This might be one of the few pieces of software for which a 65c02 at the same clock speed causes a measurable
@@ -152,13 +156,13 @@ optimizations are possible but rewriting in e.g. C++ should give a large perform
 
 We can tick the speaker more frequently than 10 cycles using a couple of methods:
 
-- chaining multiple STA $C030 together, e.g. to give a 4/.../4/4/9 cadence.
+- chaining multiple STA $C030 together, e.g. to give a 4/.../4/4/10 cadence.
 
-- by exploiting 6502 "false reads".  During the course of executing a 6502 opcode, the CPU may access memory locations
-  multiple times (up to 4 times, during successive clock cycles).  This would give additional options for (partial)
-  control of the speaker in the <10-cycle period regime.
-  
-It remains to be seen to what extent these approaches may effect audio quality.
+- by exploiting 6502 opcodes that repeatedly access memory during execution, including "false reads".  During the course
+  of executing a 6502 opcode, the CPU may access memory locations multiple times (up to 4 times, during successive clock
+  cycles).  This would give additional options for (partial) control of the speaker in the <10-cycle period regime.
+
+Early results suggest that using these exotic opcode variants (e.g. INC $C030) may give a quality boost.
 
 ### Measure speaker time constants
 
@@ -183,5 +187,5 @@ e.g. Oliver Schmidt's [PLAY.BTC](https://github.com/oliverschmidt/Play-BTc), tho
 audio data for them did not exist.  It should be possible to adapt the ][-sound encoder to produce better-quality audio
 for these existing players.
 
-I think it should also be possible to improve quality at similar bitrate, through using some of the cycle-level targeting
-techniques (though perhaps not at full 1-cycle resolution).
+I think it should also be possible to improve in-memory playback quality at similar bitrate, through using some of the
+cycle-level targeting techniques (though perhaps not at full 1-cycle resolution).

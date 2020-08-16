@@ -4,19 +4,22 @@
 ;  Created by Kris Kennaway on 27/07/2020.
 ;  Copyright © 2020 Kris Kennaway. All rights reserved.
 ;
-;  Delta modulation audio player for streaming audio over Ethernet (often called "BTC" in the Apple II community, after
-;  https://www.romanblack.com/picsound.htm who described various Apple II-like audio circuits and audio encoding
-;  algorithms).
+;  Delta modulation audio player for streaming audio over Ethernet.
 ;
-;  How this works is by modeling the Apple II speaker as an RC circuit.  When we tick the speaker it inverts the voltage
-;  across it, and the speaker responds by moving asymptotically towards the new level.  With some empirical tuning of
-;  the time constant of this RC circuit, we can precisely model how the speaker will respond to voltage changes, and use
-;  this to make the speaker "trace out" our desired waveform.  We can't do this precisely so there is some left-over
-;  quantization noise that manifests as background static.
+;  How this works is by modeling the Apple II speaker as an RC circuit.  Delta modulation with an RC circuit is often
+;  called "BTC", after https://www.romanblack.com/picsound.htm.
 ;
-;  This player uses a 13-cycle period, i.e. about 78.7KHz sampling rate.  We could go as low as 9 cycles for the period,
-;  but there is an audible 12.6KHz harmonic that I think is due to interference between the 9 cycle period and the
-;  every-65-cycle "long cycle" of the Apple II CPU.  13 cycles evenly divides 65 so this avoids the harmonic.
+;  When we tick the speaker it inverts the applied voltage across it, and the speaker responds by moving asymptotically
+;  towards the new level.  With some empirical tuning of the time constant of this RC circuit (which seems to be about
+;  500 us), we can precisely model how the speaker will respond to voltage changes, and use this to make the speaker
+;  "trace out" our desired waveform.  We can't do this precisely -- the speaker will zig-zag around the target waveform
+;  because we can only move it in finite steps -- so there is some left-over quantization noise that manifests as
+;  background static.
+;
+;  This player is capable of manipulating the speaker with 1-cycle precision, i.e. a 1MHz sampling rate, depending on
+;  how the "player opcodes" are chained together by the ethernet bytestream.  The catch is that once we have toggled
+;  the speaker we can't toggle it again until at least 10 cycles have passed, but we can pick any interval >= 10 cycles
+;  (except for 11 because of 6502 opcode timing limitations).
 ;
 ;  Some other tricks used here:
 ;
@@ -27,7 +30,7 @@
 ;    byte stream to contain the low-order byte of the target address we want to jump to next.
 ;  - Since our 13-cycle period gives us 4 "spare" cycles over the minimal 9, that also lets us do a page-flipping trick
 ;    to visualize the audio bitstream while playing.
-;  - As with my II-Vision streaming video+audio player, we schedule a "slow path" dispatch to occur every 2KB in the
+;  - As with my ][-Vision streaming video+audio player, we schedule a "slow path" dispatch to occur every 2KB in the
 ;    byte stream, and use this to manage the socket buffers (ACK the read 2KB and wait until at least 2KB more is
 ;    available, which is usually non-blocking).  While doing this we need to maintain the 13 cycle cadence so the
 ;    speaker is in a known trajectory.  We can compensate for this in the audio encoder.
@@ -92,6 +95,7 @@ STESTABLISHED = $17
 PRODOS      = $BF00 ; ProDOS MLI entry point
 RESET_VECTOR = $3F2 ; Reset vector
 COUT        = $FDED
+HOME        = $FC58
 
 TICK        = $C030 ; where the magic happens
 TEXTOFF     = $C050
@@ -152,7 +156,7 @@ reset_w5100:
     STA WDATA ; SET RECEIVE BUFFER
     STA WDATA ; SET TRANSMIT BUFFER
 
-; CONFIGRE SOCKET 0 FOR TCP
+; CONFIGURE SOCKET 0 FOR TCP
 
     LDA #>S0MR
     STA WADRH
@@ -260,93 +264,65 @@ setup:
     CPX #(end_copy_page1 - begin_copy_page1+1)
     BNE @0
 
-    ; pretty colours
-    STA TEXTOFF
-    STA FULLSCR
-
-    LDA #$22
-    LDX #$04
-    LDY #$08
-    JSR fill
-
-    LDA #$66
-    LDX #$08
-    LDY #$0c
-    JSR fill
+    ; clear screen
+    jsr HOME
 
     ; to restore after checkrecv
     LDY #>RXBASE
-    
     LDA #>S0RXRSR
     STA WADRH
     JMP checkrecv
 
-fill:
-    STX @1+2
-    STY @2+1
+; The actual player code, which will be copied to $3xx for execution
+;
+; opcode cycle counts are for 65c02, for 6502 they are 1 less because JMP (indirect) is 5 cycles instead of 6.
 
-    PHA
-@0:
-    PLA
-    LDX #$00
-@1:
-    STA $0400,X
-    INX
-    CPX #$78
-    BNE @1
-
-    PHA
-    CLC
-    LDA @1+1
-    ADC #$80
-    STA @1+1
-    LDA @1+2
-    ADC #$00
-    STA @1+2
-@2:
-    CMP #$08
-    BNE @0
-    PLA
-    RTS
-
-; The actual player code
+; TODO: evaluate whether it's worth adding longer NOTICK variants.  They are less commonly needed than TICK because
+; we typically don't want to leave the speaker alone for a long period of time - it's unlikely that the target waveform
+; exactly tracks what the speaker will do without intervention.
 
 begin_copy_page1:
 
-; $300
-tick_12: ; ticks on cycle 7 of 12
-  STA zpdummy
-  STA $C030
-  JMP (WDATA)
+; combinations of the following tick_even and tick_odd opcodes are enough to recover all tick intervals >= 10 cycles,
+; except for 11:
+;
+;   even tick intervals
+;     10 = TICK_10
+;     12 = TICK_12
+;     14 = TICK_14
+;     16 = NOTICK_6 + TICK_10
+;     18 = NOTICK_6 + TICK_12
+;     20 = NOTICK_6 + TICK_14
+;     22 = NOTICK_6 + NOTICK_6 + TICK_10
+;     24 = ...
+;
+;   odd tick intervals
+;     11 = ?
+;     13 = TICK_13
+;     15 = TICK_15
+;     17 = TICK_17
+;     19 = NOTICK_6 + TICK_13
+;     21 = NOTICK_6 + TICK_15
+;     23 = NOTICK_6 + TICK_17
+;     25 = NOTICK_6 + NOTICK_6 + TICK_13
+;     27 = ...
 
-; $308
-; ticks on cycle count 2n+4 out of 2n+9, minimum 4 out of 9
-; 9, 11, 13, 15, 17
-; only need up to tick_17 because others come from combinations
-tick_n_odd:
-  NOP
-  NOP
-  NOP
-  NOP
-  STA $C030
-  JMP (WDATA)
+; $300
+tick_odd: ; (NOTICK_6), (TICK_10), TICK_13, TICK_15, TICK_17
+    NOP ; 2
+    NOP ; 2
+    STA zpdummy ; 3
+    STA $C030 ; 4
+    JMP (WDATA) ; 6
+
+; $30a
+tick_even: ; NOTICK_6, TICK_10, TICK_12, TICK_14
+    NOP ; 2
+    NOP ; 2
+    STA $C030 ; 4
+    JMP (WDATA) ; 6
 
 ; $312
-notick_8:
-  STA zpdummy
-  JMP (WDATA)
-
-; $317
-; 2n+5 cycles, minimum 5
-; only need 5,7,9,11
-; then 13 = 8+5
-notick_n_odd:
-  NOP
-  NOP
-  NOP
-  JMP (WDATA)
-
-; $31d
 ; Quit to ProDOS
 exit:
     INC  RESET_VECTOR+2  ; Invalidate power-up byte
@@ -363,15 +339,22 @@ exit_parmtable:
 
 ; Manage W5100 socket buffer and ACK TCP stream.
 ;
-; In order to simplify the buffer management we expect this ACK opcode to consume
-; the last 4 bytes in a 2K "TCP frame".  i.e. we can assume that we need to consume
-; exactly 2K from the W5100 socket buffer.
+; In order to simplify the buffer management we expect this ACK opcode to consume the last 4 bytes in a 2K "TCP frame".
+; i.e. we can assume that we need to consume exactly 2K from the W5100 socket buffer.
 ;
-; While during this we need to keep ticking the speaker every 13 cycles to maintain the same
-; net position of the speaker cone.  It might be possible to compensate for some other cadence in the encoder,
-; but this risks introducing unwanted harmonics.  We end up ticking 12 times assuming we don't stall waiting for
-; the socket buffer to refill.  In that case audio is already going to be disrupted though.
-slowpath: ;$32d
+; While during this we need to keep ticking the speaker at a regular cadence to maintain the same net position of the
+; speaker cone.  We choose to tick every 14 cycles, which requires adding in minimal NOP padding.
+;
+; We end up ticking 8 times with 10 cycles left over, assuming we don't stall waiting for the socket buffer to refill.
+;
+; From the point of view of speaker voltages this slowpath is equivalent to the following opcode sequence:
+; TICK_6 (TICK_14 * 7) with 4 cycles left over, adding 4 to the effective n of the next TICK_n we jump to (as chosen by
+; the encoder).
+;
+; If we do stall waiting for data then there is no need to worry about maintaining an even cadence, because audio
+; will already be disrupted (since the encoder won't have predicted it, so will be tracking wrong).  The speaker will
+; resynchronize within a few hundred microseconds though.
+slowpath: ;$322
     STA TICK ; 4
     
     ; Save the W5100 address pointer so we can come back here later
@@ -381,73 +364,49 @@ slowpath: ;$32d
     
     ; Read Received Read pointer
     LDA #>S0RXRD ; 2
-    STA zpdummy ; 3
-    STA TICK ; 4 [13]
-    
     STA WADRH ; 4
-    
-    LDX #<S0RXRD ; 2
-    STA zpdummy ; 3
-    STA TICK ; 4 [13]
-    
-    STX WADRL ; 4
-    NOP ; 2
-    STA zpdummy ; 3
-    STA TICK ; 4 [ 13]
+    STA TICK ; 4 [14]
 
+    LDX #<S0RXRD ; 2
+    STX WADRL ; 4
     LDA WDATA ; 4 Read high byte
+    STA TICK ; 4 [14]
+
     ; No need to read low byte since it's guaranteed to be 0 since we're at the end of a 2K frame.
 
     ; Update new Received Read pointer
     ; We have received an additional 2KB
     CLC ; 2
-    STA zpdummy ; 3
-    STA TICK ; 4 [13]
-    
     ADC #$08 ; 2
 
     STX WADRL ; 4 Reset address pointer, X still has #<S0RXRD
-    STA zpdummy ; 3
-    STA TICK ; 4 [13]
+    NOP ; 2
+    STA TICK ; 4 [14]
 
     STA WDATA ; 4 Store new high byte
     ; No need to store low byte since it's unchanged at 0
 
     ; Send the Receive command
     LDA #<S0CR ; 2
-
-    STA zpdummy ; 3
-    STA TICK ; 4 [13]
-    
     STA WADRL ; 4
+    STA TICK ; 4 [14]
 
     LDA #SCRECV ; 2
-    STA zpdummy ; 3
-    STA TICK ; 4 [13]
-    
     STA WDATA ; 4
     
 checkrecv:
     LDA #<S0RXRSR   ; 2 Socket 0 Received Size register
-    STA zpdummy ; 3
+    LDX #$07 ; 2
+    STA TICK ; 4 [14]
 
     ; we might loop an unknown number of times here waiting for data but the default should be to fall
     ; straight through
 @0:
-    STA TICK        ; 4
     STA WADRL       ; 4
-    LDX #$07; 2  could move out of loop but need to pad cycles anyway
-    STA zpdummy ; 3
-    STA TICK ; 4 [13]
-    
     CPX WDATA       ; 4 High byte of received size
-
-    BCC @1          ; 2
-    BCS @0          ; 3
-    
-@1:
     NOP ; 2
-    STA TICK ; 4 [13]
+    STA TICK ; 4 [14]
+    BCS @0          ; 2 in common case when there is already sufficient data waiting.
 
     ; point W5100 back into the RX buffer where we left off
     ; There is data to read - we don't care exactly how much because it's at least 2K
@@ -458,10 +417,10 @@ checkrecv:
     ; Since we're using an 8K socket, that means we don't have to do any work to manage the read pointer!
     STY WADRH  ; 4
     LDX #$00 ; 2
-    STA zpdummy ; 3
-    STA TICK ; 4
+    NOP ; 2
+    STA TICK ; 4 [14]
     
     STX WADRL  ; 4
-    JMP (WDATA) ; 5
+    JMP (WDATA) ; 6 [10/14]
 end_copy_page1:
 .endproc
