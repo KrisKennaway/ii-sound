@@ -108,9 +108,9 @@ zpdummy = $ff
 ; RESET AND CONFIGURE W5100
 bootstrap:
     ; install reset handler
-    LDA #<exit
+    LDA #<real_exit
     STA RESET_VECTOR
-    LDA #>exit
+    LDA #>real_exit
     STA RESET_VECTOR+1
     EOR #$A5
     STA RESET_VECTOR+2 ; checksum to ensure warm-start reset
@@ -273,6 +273,21 @@ setup:
     STA WADRH
     JMP checkrecv
 
+real_exit:
+    INC  RESET_VECTOR+2  ; Invalidate power-up byte
+    JSR  PRODOS          ; Call the MLI ($BF00)
+    .BYTE $65            ; CALL TYPE = QUIT
+    .ADDR exit_parmtable ; Pointer to parameter table
+
+exit_parmtable:
+    .BYTE 4             ; Number of parameters is 4
+    .BYTE 0             ; 0 is the only quit type
+    .WORD 0000          ; Pointer reserved for future use
+    .BYTE 0             ; Byte reserved for future use
+    .WORD 0000          ; Pointer reserved for future use
+
+; real_slowpath:
+
 ; The actual player code, which will be copied to $3xx for execution
 ;
 ; opcode cycle counts are for 65c02, for 6502 they are 1 less because JMP (indirect) is 5 cycles instead of 6.
@@ -306,36 +321,308 @@ begin_copy_page1:
 ;     23 = NOTICK_6 + TICK_17
 ;     25 = NOTICK_6 + NOTICK_6 + TICK_13
 ;     27 = ...
+tick_00: ;
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_01:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_02:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_03:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_04:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_05:
+  JMP (WDATA) ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
-; $300
-tick_odd: ; (NOTICK_6), (TICK_10), TICK_13, TICK_15, TICK_17
-    NOP ; 2
-    NOP ; 2
-    STA zpdummy ; 3
-    STA $C030 ; 4
-    JMP (WDATA) ; 6
+tick_08:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_09:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_0a: ;
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_0b: ;
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
-; $30a
-tick_even: ; NOTICK_6, TICK_10, TICK_12, TICK_14
-    NOP ; 2
-    NOP ; 2
-    STA $C030 ; 4
-    JMP (WDATA) ; 6
+tick_11:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_12:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_13: ;
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
-; $312
+tick_1a:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_1b: ;
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_23: ;
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_2c:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_2d:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_2e:
+  INC $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_34:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_35:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_36:
+  STA $C030,X ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_3c: ;
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_3d: ;
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  STA $C030 ;  [DUP 1]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_46:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+tick_47:
+  INC $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_4e:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_4f:
+  STA $C030,X ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_56: ;
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  STA $C030 ;  [DUP 1]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_60:
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  STA $C030 ;  [DUP 2]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_6a:
+  INC $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_72:
+  STA $C030,X ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_7a:
+  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+tick_7b: ; 1133687
+  INC $C030,X ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_81: ; 929768
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  INC $C030 ;  [DUP 5]  voltages (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_8a:
+  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  STA $C030,X ;  [DUP 6]  voltages (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_93:
+  INC $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  STA $C030 ;  [DUP 1]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_9c:
+  STA $C030,X ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  STA $C030 ;  [DUP 1]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_a5:
+  STA $C030,X ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  STA $C030,X ;  [DUP 6]  voltages (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+tick_ae:
+  INC $C030,X ;  voltages (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+; 181 bytes
+
+;tick_00:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_01:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_02:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_03:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_04:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_05:
+;  JMP (WDATA) ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_08:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_09:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_0a:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_0b:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_0c:
+;  STA zpdummy ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_11:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_12:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_13:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_14:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_1a:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_1b:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_1c:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_23:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_24:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_25:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA zpdummy ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_2d:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_2e:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_2f:
+;  STA zpdummy ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA $C030 ;  [DUP 6]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_37:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_38:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_40:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_41:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA zpdummy ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_4a:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;tick_4b:
+;  STA zpdummy ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA $C030 ;  [DUP 7]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_54:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_5d:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  NOP ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA zpdummy ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_67:
+;  STA zpdummy ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA $C030 ;  [DUP 11]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_71:
+;  NOP ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;tick_72:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA $C030 ;  [DUP 6]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_7b:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  NOP ;  [DUP 6]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA $C030 ;  [DUP 6]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_85:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA $C030 ;  [DUP 7]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  NOP ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_8f:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA $C030 ;  [DUP 8]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA zpdummy ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_9a:
+;  STA $C030 ;  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA zpdummy ;  [DUP 9]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA $C030 ;  [DUP 6]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_a5:
+;  STA zpdummy ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA $C030 ;  [DUP 32]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  STA $C030 ;  [DUP 6]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+;tick_b0:
+;  STA zpdummy ;  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA $C030 ;  [DUP 8]  voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+;  STA zpdummy ;  [DUP 1]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+;  JMP (WDATA) ;  [DUP 0]  voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+; 186 bytes
+
+; $3c4
 ; Quit to ProDOS
 exit:
-    INC  RESET_VECTOR+2  ; Invalidate power-up byte
-    JSR  PRODOS          ; Call the MLI ($BF00)
-    .BYTE $65            ; CALL TYPE = QUIT
-    .ADDR exit_parmtable ; Pointer to parameter table
-
-exit_parmtable:
-    .BYTE 4             ; Number of parameters is 4
-    .BYTE 0             ; 0 is the only quit type
-    .WORD 0000          ; Pointer reserved for future use
-    .BYTE 0             ; Byte reserved for future use
-    .WORD 0000          ; Pointer reserved for future use
+    JMP real_exit
 
 ; Manage W5100 socket buffer and ACK TCP stream.
 ;
@@ -354,59 +641,70 @@ exit_parmtable:
 ; If we do stall waiting for data then there is no need to worry about maintaining an even cadence, because audio
 ; will already be disrupted (since the encoder won't have predicted it, so will be tracking wrong).  The speaker will
 ; resynchronize within a few hundred microseconds though.
-slowpath: ;$322
+slowpath: ;$3c7
     STA TICK ; 4
-    
+    JMP _slowpath ; 3 rest of slowpath doesn't fit in page 3
+end_copy_page1:
+
+_slowpath:
+    STA zpdummy ; 3
     ; Save the W5100 address pointer so we can come back here later
     ; We know the low-order byte is 0 because Socket RX memory is page-aligned and so is 2K frame.
     ; IMPORTANT - from now on until we restore this below, we can't trash the Y register!
+    STA TICK ; 4 [10]
     LDY WADRH ; 4
-    
+
     ; Read Received Read pointer
     LDA #>S0RXRD ; 2
+    STA TICK ; 4 [10]
     STA WADRH ; 4
-    STA TICK ; 4 [14]
 
     LDX #<S0RXRD ; 2
+    STA TICK ; 4 [10]
+
     STX WADRL ; 4
+    NOP ; 2
+    STA TICK ; 4 [10]
     LDA WDATA ; 4 Read high byte
-    STA TICK ; 4 [14]
 
     ; No need to read low byte since it's guaranteed to be 0 since we're at the end of a 2K frame.
 
     ; Update new Received Read pointer
     ; We have received an additional 2KB
     CLC ; 2
+    STA TICK ; 4 [10]
     ADC #$08 ; 2
 
     STX WADRL ; 4 Reset address pointer, X still has #<S0RXRD
-    NOP ; 2
-    STA TICK ; 4 [14]
-
-    STA WDATA ; 4 Store new high byte
+    STA TICK ; 4 [10]
     ; No need to store low byte since it's unchanged at 0
+    STA WDATA ; 4 Store new high byte
 
     ; Send the Receive command
     LDA #<S0CR ; 2
+    STA TICK ; 4 [10]
     STA WADRL ; 4
-    STA TICK ; 4 [14]
 
     LDA #SCRECV ; 2
+    STA TICK ; 4 [10]
     STA WDATA ; 4
-    
+
 checkrecv:
     LDA #<S0RXRSR   ; 2 Socket 0 Received Size register
+    STA TICK ; 4 [10]
     LDX #$07 ; 2
-    STA TICK ; 4 [14]
-
+    NOP ; 2
+    NOP ; 2
+    STA TICK ; 4 [10]
     ; we might loop an unknown number of times here waiting for data but the default should be to fall
     ; straight through
 @0:
     STA WADRL       ; 4
-    CPX WDATA       ; 4 High byte of received size
     NOP ; 2
-    STA TICK ; 4 [14]
+    STA TICK ; 4 [10]
+    CPX WDATA       ; 4 High byte of received size
     BCS @0          ; 2 in common case when there is already sufficient data waiting.
+    STA TICK ; 4 [10]
 
     ; point W5100 back into the RX buffer where we left off
     ; There is data to read - we don't care exactly how much because it's at least 2K
@@ -417,10 +715,10 @@ checkrecv:
     ; Since we're using an 8K socket, that means we don't have to do any work to manage the read pointer!
     STY WADRH  ; 4
     LDX #$00 ; 2
-    NOP ; 2
-    STA TICK ; 4 [14]
-    
+    STA TICK ; 4 [10]
+
     STX WADRL  ; 4
+    NOP ; 2
+    STA TICK ; 4 [10]
     JMP (WDATA) ; 6 [10/14]
-end_copy_page1:
 .endproc

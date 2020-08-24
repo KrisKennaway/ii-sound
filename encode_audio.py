@@ -52,10 +52,10 @@ def lookahead(step_size: int, initial_position: float, data: numpy.ndarray,
 
     target_val = data[offset:offset + voltages.shape[1]]
     scaled_voltages = voltages / step_size
-
+    position_scale = (1 - 1 / step_size)
     for i in range(0, voltages.shape[1]):
         positions[:, i + 1] = (
-                scaled_voltages[:, i] + positions[:, i] * (1 - 1 / step_size))
+                scaled_voltages[:, i] + positions[:, i] * position_scale)
     err = positions[:, 1:] - target_val
     total_error = numpy.sum(numpy.power(err, 2), axis=1)
 
@@ -76,11 +76,16 @@ def evolve(opcode: opcodes.Opcode, starting_position, starting_voltage,
     position = starting_position
     total_err = 0.0
     v = starting_voltage
+    last_v = v
+    num_flips = 0
     for i, v in enumerate(voltages):
+        if v != last_v:
+            num_flips += 1
+            last_v = v
         position += (v - position) / step_size
         err = position - data[starting_idx + i]
         total_err += err ** 2
-    return position, v, total_err, starting_idx + opcode_length
+    return position, v, total_err, starting_idx + opcode_length, num_flips
 
 
 def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
@@ -99,34 +104,33 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
     i = 0
     last_updated = 0
     opcode_counts = collections.defaultdict(int)
-
-    while i < dlen:
+    num_flips = 0
+    while i < int(dlen/10):
         if (i - last_updated) > int((dlen / 1000)):
             eta.print_status()
             last_updated = i
 
-        candidate_opcodes = opcodes.opcode_lookahead(
+        candidate_opcodes, voltages = opcodes.candidate_opcodes(
             frame_offset, lookahead_steps)
-        pruned_opcodes, voltages = opcodes.prune_opcodes(
-            candidate_opcodes, lookahead_steps)
 
         opcode_idx = lookahead(step, position, data, i, voltage * voltages)
-        opcode = pruned_opcodes[opcode_idx].opcodes[0]
+        opcode = candidate_opcodes[opcode_idx].opcodes[0]
         opcode_counts[opcode] += 1
         yield opcode
 
-        # TODO: round position and memoize, and use in lookahead too
-        position, voltage, new_error, i = evolve(
+        position, voltage, new_error, i, new_flips = evolve(
             opcode, position, voltage, step, data, i)
 
         total_err += new_error
+        num_flips += new_flips
         frame_offset = (frame_offset + 1) % 2048
 
     for _ in range(frame_offset % 2048, 2047):
-        yield opcodes.Opcode.NOTICK_6
+        yield opcodes.Opcode.TICK_00
     yield opcodes.Opcode.EXIT
     eta.done()
     print("Total error %f" % total_err)
+    print("%d speaker actuations" % num_flips)
 
     print("Opcodes used:")
     for v, k in sorted(list(opcode_counts.items()), key=lambda kv: kv[1],
