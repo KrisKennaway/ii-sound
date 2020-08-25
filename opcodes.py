@@ -89,7 +89,7 @@ class Opcode(enum.Enum):
 
 def make_tick_voltages(length) -> numpy.ndarray:
     """Voltage sequence for a NOP; ...; STA $C030; JMP (WDATA)."""
-    c = numpy.full(length, 1.0, dtype=numpy.float32)
+    c = numpy.full(length, 1.0, dtype=numpy.float64)
     for i in range(length - 7, length):  # TODO: 6502
         c[i] = -1.0
     return c
@@ -97,13 +97,13 @@ def make_tick_voltages(length) -> numpy.ndarray:
 
 def make_notick_voltages(length) -> numpy.ndarray:
     """Voltage sequence for a NOP; ...; JMP (WDATA)."""
-    return numpy.full(length, 1.0, dtype=numpy.float32)
+    return numpy.full(length, 1.0, dtype=numpy.float64)
 
 
 def make_slowpath_voltages() -> numpy.ndarray:
     """Voltage sequence for slowpath TCP processing."""
     length = 14 * 10 + 10  # TODO: 6502
-    c = numpy.full(length, 1.0, dtype=numpy.float32)
+    c = numpy.full(length, 1.0, dtype=numpy.float64)
     voltage_high = True
     for i in range(15):
         voltage_high = not voltage_high
@@ -111,95 +111,180 @@ def make_slowpath_voltages() -> numpy.ndarray:
             c[j] = 1.0 if voltage_high else -1.0
     return c
 
+
 # exp3
 
 class Opcode(enum.Enum):
-  TICK_00 = 0x00
-  TICK_01 = 0x01
-  TICK_02 = 0x02
-  TICK_03 = 0x03
-  TICK_04 = 0x04
-  TICK_05 = 0x05
-  TICK_08 = 0x08
-  TICK_09 = 0x09
-  TICK_0a = 0x0a
-  TICK_0b = 0x0b
-  TICK_11 = 0x11
-  TICK_12 = 0x12
-  TICK_13 = 0x13
-  TICK_1a = 0x1a
-  TICK_1b = 0x1b
-  TICK_23 = 0x23
-  TICK_2c = 0x2c
-  TICK_2d = 0x2d
-  TICK_2e = 0x2e
-  TICK_34 = 0x34
-  TICK_35 = 0x35
-  TICK_36 = 0x36
-  TICK_3c = 0x3c
-  TICK_3d = 0x3d
-  TICK_46 = 0x46
-  TICK_47 = 0x47
-  TICK_4e = 0x4e
-  TICK_4f = 0x4f
-  TICK_56 = 0x56
-  TICK_60 = 0x60
-  TICK_6a = 0x6a
-  TICK_72 = 0x72
-  TICK_7a = 0x7a
-  TICK_7b = 0x7b
-  TICK_81 = 0x81
-  TICK_8a = 0x8a
-  TICK_93 = 0x93
-  TICK_9c = 0x9c
-  TICK_a5 = 0xa5
-  TICK_ae = 0xae
-  EXIT = 0xb5
-  SLOWPATH = 0xb8
+    TICK_00 = 0x00
+    TICK_01 = 0x01
+    TICK_02 = 0x02
+    TICK_03 = 0x03
+    TICK_04 = 0x04
+    TICK_05 = 0x05
+    TICK_08 = 0x08
+    TICK_09 = 0x09
+    TICK_0a = 0x0a
+    TICK_0b = 0x0b
+    TICK_11 = 0x11
+    TICK_12 = 0x12
+    TICK_13 = 0x13
+    TICK_1a = 0x1a
+    TICK_1b = 0x1b
+    TICK_23 = 0x23
+    TICK_2c = 0x2c
+    TICK_2d = 0x2d
+    TICK_2e = 0x2e
+    TICK_34 = 0x34
+    TICK_35 = 0x35
+    TICK_36 = 0x36
+    TICK_3c = 0x3c
+    TICK_3d = 0x3d
+    TICK_46 = 0x46
+    TICK_47 = 0x47
+    TICK_4e = 0x4e
+    TICK_4f = 0x4f
+    TICK_56 = 0x56
+    TICK_60 = 0x60
+    TICK_6a = 0x6a
+    TICK_72 = 0x72
+    TICK_7a = 0x7a
+    TICK_7b = 0x7b
+    TICK_81 = 0x81
+    TICK_8a = 0x8a
+    TICK_93 = 0x93
+    TICK_9c = 0x9c
+    TICK_a5 = 0xa5
+    TICK_ae = 0xae
+    EXIT = 0xb5
+    SLOWPATH = 0xb8
+
 
 VOLTAGE_SCHEDULE = {
-  Opcode.TICK_00: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_01: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_02: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_03: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_04: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_05: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_08: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_09: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_0a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_0b: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_11: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_12: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_13: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_1a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_1b: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_23: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_2c: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_2d: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_2e: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_34: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_35: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_36: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_3c: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_3d: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_46: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_47: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_4e: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_4f: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_56: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_60: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_6a: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_72: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_7a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_7b: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_81: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_8a: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_93: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_9c: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-  Opcode.TICK_a5: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-  Opcode.TICK_ae: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
+    Opcode.TICK_00: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_01: numpy.array(
+        (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_02: numpy.array(
+        (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_03: numpy.array(
+        (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_04: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_05: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_08: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_09: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_0a: numpy.array(
+        (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_0b: numpy.array(
+        (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_11: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_12: numpy.array((
+        1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0,
+        -1.0, -1.0, -1.0, -1.0, -1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_13: numpy.array(
+        (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_1a: numpy.array((
+        1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0,
+        -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_1b: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_23: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+                                 -1.0), dtype=numpy.float64),
+    Opcode.TICK_2c: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_2d: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_2e: numpy.array(
+        (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_34: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_35: numpy.array(
+        (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_36: numpy.array(
+        (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_3c: numpy.array((
+        1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_3d: numpy.array((
+        1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+    Opcode.TICK_46: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_47: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_4e: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_4f: numpy.array(
+        (1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_56: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+                                 -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_60: numpy.array((
+        1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_6a: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+                                 -1.0), dtype=numpy.float64),
+    Opcode.TICK_72: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_7a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_7b: numpy.array(
+        (1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        dtype=numpy.float64),
+    Opcode.TICK_81: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0,
+                                 -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_8a: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_93: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0,
+                                 -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_9c: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+                                 -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_a5: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
+    Opcode.TICK_ae: numpy.array((1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, 1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+                                dtype=numpy.float64),
     Opcode.SLOWPATH: make_slowpath_voltages(),
 }
+
 
 #
 # class Opcode(enum.Enum):
@@ -248,74 +333,54 @@ VOLTAGE_SCHEDULE = {
 #   SLOWPATH = 0xbd
 #
 # VOLTAGE_SCHEDULE = {
-#   Opcode.TICK_00: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_01: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_02: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_03: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_04: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_05: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_08: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_09: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_0a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_0b: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_0c: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_11: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_12: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_13: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_14: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_1a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_1b: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_1c: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_23: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_24: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_25: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_2d: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_2e: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_2f: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_37: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_38: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_40: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_41: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_4a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_4b: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_54: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_5d: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_67: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
-#   Opcode.TICK_71: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_72: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_7b: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_85: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_8f: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_9a: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_a5: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float32),
-#   Opcode.TICK_b0: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float32),
+#   Opcode.TICK_00: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_01: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_02: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_03: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_04: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_05: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_08: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_09: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_0a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_0b: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_0c: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_11: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_12: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_13: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_14: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_1a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_1b: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_1c: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_23: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_24: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_25: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_2d: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_2e: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_2f: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_37: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_38: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_40: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_41: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_4a: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_4b: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_54: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_5d: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_67: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
+#   Opcode.TICK_71: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_72: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_7b: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_85: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_8f: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_9a: numpy.array((1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_a5: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), dtype=numpy.float64),
+#   Opcode.TICK_b0: numpy.array((1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0), dtype=numpy.float64),
 #   Opcode.SLOWPATH: make_slowpath_voltages(),
 # }
+
 
 def cycle_length(op: Opcode) -> int:
     """Returns the 65C02 cycle length of a player opcode."""
     return len(VOLTAGE_SCHEDULE[op])
-
-
-class _Opcodes:
-    """Container for immutable Iterable[Opcode], to improve hash performance."""
-
-    def __init__(self, opcodes: Iterable[Opcode]):
-        self.opcodes = tuple(opcodes)
-        self._hash = hash(self.opcodes)
-
-    def __hash__(self):
-        return self._hash
-
-
-# Guarantees each Tuple[Opcode] has a unique _Opcodes representation
-_OPCODES_SINGLETON = {}
-
-
-@functools.lru_cache(None)
-def Opcodes(opcodes: Tuple[Opcode]):
-    """Returns unique _Opcodes representation for Tuple[Opcode]."""
-    return _OPCODES_SINGLETON.setdefault(opcodes, _Opcodes(opcodes))
 
 
 @functools.lru_cache(None)
@@ -336,16 +401,6 @@ def opcode_choices(frame_offset: int) -> List[Opcode]:
 @functools.lru_cache(None)
 def opcode_lookahead(
         frame_offset: int,
-        lookahead_cycles: int) -> Tuple[_Opcodes]:
-    """Computes all valid sequences of opcodes spanning lookahead_cycles."""
-
-    return tuple(Opcodes(ops) for ops in
-                 _opcode_lookahead(frame_offset, lookahead_cycles))
-
-
-@functools.lru_cache(None)
-def _opcode_lookahead(
-        frame_offset: int,
         lookahead_cycles: int) -> Tuple[Tuple[Opcode]]:
     """Recursively enumerates all valid opcode sequences."""
 
@@ -355,47 +410,32 @@ def _opcode_lookahead(
         if cycle_length(op) >= lookahead_cycles:
             ops.append((op,))
         else:
-            for res in _opcode_lookahead((frame_offset + 1) % 2048,
-                                         lookahead_cycles - cycle_length(op)):
+            for res in opcode_lookahead((frame_offset + 1) % 2048,
+                                        lookahead_cycles - cycle_length(op)):
                 ops.append((op,) + res)
     return tuple(ops)  # TODO: fix return type
 
 
-class Cycles:
-    """Container for immutable Tuple[float], to improve hash performance."""
-
-    def __init__(self, cycles: Tuple[float]):
-        self.cycles = cycles
-        self._hash = hash(cycles)
-
-    def __hash__(self):
-        return self._hash
-
-
-# Guarantees each Tuple[float] has a unique Cycles representation
-_CYCLES_SINGLETON = {}
-
-
 @functools.lru_cache(None)
 def cycle_lookahead(
-        opcodes: _Opcodes,
+        opcodes: Tuple[Opcode],
         lookahead_cycles: int
-) -> Cycles:
+) -> Tuple[float]:
     """Computes the applied voltage effects of a sequence of opcodes.
 
     i.e. produces the sequence of applied voltage changes that will result
     from executing these opcodes, limited to the next lookahead_cycles.
     """
     cycles = []
-    for op in opcodes.opcodes:
+    for op in opcodes:
         cycles.extend(VOLTAGE_SCHEDULE[op])
-    trunc_cycles = tuple(cycles[:lookahead_cycles])
-    return _CYCLES_SINGLETON.setdefault(trunc_cycles, Cycles(trunc_cycles))
+    return tuple(cycles[:lookahead_cycles])
 
 
 @functools.lru_cache(None)
-def candidate_opcodes(frame_offset:int, lookahead_cycles: int
-) -> Tuple[List[_Opcodes], numpy.ndarray]:
+def candidate_opcodes(
+        frame_offset: int, lookahead_cycles: int
+) -> Tuple[List[Opcode], numpy.ndarray]:
     """Deduplicate a tuple of opcode sequences that are equivalent.
 
     For each opcode sequence whose effect is the same when truncated to
@@ -411,6 +451,6 @@ def candidate_opcodes(frame_offset:int, lookahead_cycles: int
             continue
         seen_cycles.add(cycles)
         pruned_opcodes.append(ops)
-        pruned_cycles.append(cycles.cycles)
+        pruned_cycles.append(cycles)
 
-    return pruned_opcodes, numpy.array(pruned_cycles, dtype=numpy.float32)
+    return pruned_opcodes, numpy.array(pruned_cycles, dtype=numpy.float64)

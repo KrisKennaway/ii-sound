@@ -37,6 +37,12 @@ import opcodes
 # TODO: add flags to parametrize options
 
 
+@functools.lru_cache(None)
+def _delta_powers(shape, step_size: int) -> Tuple[float, numpy.ndarray]:
+    delta = (1 - 1 / step_size)
+    return delta, numpy.cumprod(numpy.full(shape, delta), axis=-1)
+
+
 def lookahead(step_size: int, initial_position: float, data: numpy.ndarray,
               offset: int, voltages: numpy.ndarray):
     """Evaluate effects of multiple potential opcode sequences and pick best.
@@ -49,31 +55,22 @@ def lookahead(step_size: int, initial_position: float, data: numpy.ndarray,
     performance with more opcode choices, although also has a larger fixed
     overhead.
     """
-    positions = numpy.empty((voltages.shape[0], voltages.shape[1] + 1),
-                            dtype=numpy.float32)
-    positions[:, 0] = initial_position
+    delta, delta_powers = _delta_powers(voltages.shape, step_size)
 
-    target_val = data[offset:offset + voltages.shape[1]]
-    scaled_voltages = voltages / step_size
-    position_scale = (1 - 1 / step_size)
-    for i in range(0, voltages.shape[1]):
-        positions[:, i + 1] = (
-                scaled_voltages[:, i] + positions[:, i] * position_scale)
-    err = positions[:, 1:] - target_val
-    total_error = numpy.sum(numpy.power(err, 2), axis=1)
+    positions = delta_powers * (
+            numpy.cumsum(voltages / delta_powers, axis=1) / step_size +
+            initial_position)
+    total_error = numpy.sum(
+        numpy.square(positions - data[offset:offset + voltages.shape[1]]),
+        axis=1)
 
     best = numpy.argmin(total_error)
     return best
 
 
-@functools.lru_cache(None)
-def _delta_powers(length: int, step_size: int) -> Tuple[float, numpy.ndarray]:
-    delta = (1 - 1 / step_size)
-    return delta, numpy.cumprod(numpy.full(length, delta))
-
-
+# TODO: Merge with lookahead
 def evolve(opcode: opcodes.Opcode, starting_position, starting_voltage,
-            step_size, data, starting_idx):
+           step_size, data, starting_idx):
     # The speaker position p_i evolves according to
     # p_{i+1} = p_i + (v_i - p_i) / s
     # where v_i is the i'th applied voltage, s is the speaker step size
@@ -92,20 +89,38 @@ def evolve(opcode: opcodes.Opcode, starting_position, starting_voltage,
             starting_position)
 
     # TODO: compute error once at the end?
-    total_err = numpy.sum(numpy.power(
-        positions - data[starting_idx:starting_idx + opcode_length], 2))
+    total_err = numpy.sum(numpy.square(
+        positions - data[starting_idx:starting_idx + opcode_length]))
     return positions[-1], voltages[-1], total_err, starting_idx + opcode_length
+
+
+@functools.lru_cache(None)
+def frame_horizon(frame_offset:int, lookahead_steps:int):
+    """Optimize frame_offset when we're not within lookahead_steps of slowpath.
+
+    When computing candidate opcodes, all frame offsets are the same until the
+    end-of-frame slowpath comes within our lookahead horizon.
+    """
+    if frame_offset < (2047 - lookahead_steps):
+        return 0
+    return frame_offset
 
 
 def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
     """Computes optimal sequence of player opcodes to reproduce audio data."""
 
     dlen = len(data)
-    data = numpy.concatenate([data, numpy.zeros(lookahead_steps)]).astype(
-        numpy.float32)
+    # TODO: avoid temporarily doubling memory footprint to concatenate
+    data = numpy.concatenate(
+        [data, numpy.zeros(lookahead_steps, dtype=numpy.float32)])
 
     voltage = -1.0
     position = -1.0
+
+    # Pre-warm cache so we don't skew ETA during encoding
+    for i in range(2048):
+        _, _ = opcodes.candidate_opcodes(frame_horizon(i, lookahead_steps),
+                                         lookahead_steps)
 
     total_err = 0.0
     frame_offset = 0
@@ -113,33 +128,21 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
     i = 0
     last_updated = 0
     opcode_counts = collections.defaultdict(int)
+
     while i < int(dlen / 10):
         if (i - last_updated) > int((dlen / 1000)):
             eta.print_status()
             last_updated = i
 
         candidate_opcodes, voltages = opcodes.candidate_opcodes(
-            frame_offset, lookahead_steps)
-
+            frame_horizon(frame_offset, lookahead_steps), lookahead_steps)
         opcode_idx = lookahead(step, position, data, i, voltage * voltages)
-        opcode = candidate_opcodes[opcode_idx].opcodes[0]
+        opcode = candidate_opcodes[opcode_idx][0]
         opcode_counts[opcode] += 1
         yield opcode
-        # print(opcode, position, voltage)
 
-        position, voltage, new_error, i = evolve2(
+        position, voltage, new_error, i = evolve(
             opcode, position, voltage, step, data, i)
-
-        # position2, voltage2, new_error2, i2 = evolve2(
-        #    opcode, position, voltage, step, data, i)
-        # print(opcode, position, voltage)
-        # assert i1 == i2, (i1, i2)
-        # assert voltage1 == voltage2, (voltage, voltage2)
-        # assert abs(position1 - position2) < 1e-7, (position1, position2)
-        # print(position1 - position2)
-        # i = i1
-        # voltage = voltage1
-        # position = position1
 
         total_err += new_error
         frame_offset = (frame_offset + 1) % 2048
@@ -182,10 +185,10 @@ def main(argv):
 
     # TODO: PAL Apple ][ clock rate is slightly different
     sample_rate = int(1024. * 1000)
-    data = preprocess(serve_file, sample_rate)
 
     with open(out, "wb+") as f:
-        for opcode in audio_bytestream(data, step, lookahead_steps):
+        for opcode in audio_bytestream(
+                preprocess(serve_file, sample_rate), step, lookahead_steps):
             f.write(bytes([opcode.value]))
 
 
