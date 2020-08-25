@@ -68,32 +68,6 @@ def all_opcodes(
         num_opcodes += 1
 
 
-def is_subset(short: Tuple[Opcode], long: Tuple[Opcode]):
-    """Is short a subset of long (anchored at the right-most end)?"""
-    if not short or len(short) > len(long):
-        return False
-    for i, o in enumerate(reversed(short)):
-        if long[len(long) - i - 1] != o:
-            return False
-    return True
-
-
-def longest_opcode_sequences(
-        opcodes: Iterable[Tuple[Opcode]]) -> Tuple[Tuple[Opcode]]:
-    """Filter opcodes by discarding entries that are subsets of another."""
-    longest = {}
-    for ops in opcodes:
-        is_longest = True
-        for l in longest.keys():
-            if is_subset(ops, l):
-                is_longest = False
-                break
-        if is_longest:
-            longest[tuple(ops)] = True
-
-    return tuple(longest.keys())
-
-
 def generate_player(max_cycles: int, opcodes: List[Opcode],
                     opcode_filename: str,
                     player_filename: str):
@@ -108,7 +82,7 @@ def generate_player(max_cycles: int, opcodes: List[Opcode],
         key=lambda o: len(o), reverse=True)
 
     with open(player_filename, "w+") as f:
-        for i, k in enumerate(longest_opcode_sequences(all_ops))
+        for i, k in enumerate(all_ops):
             is_unique = False
             player_op = []
             player_op_len = 0
@@ -155,9 +129,9 @@ def generate_player(max_cycles: int, opcodes: List[Opcode],
 
 if __name__ == "__main__":
     generate_player(
-        max_cycles=17,
-        # Opcode.INC, Opcode.STAX, Opcode.INCX
-        opcodes=[Opcode.NOP, Opcode.NOP3, Opcode.STA],
+        max_cycles=16,
+        # Opcode.NOP3,
+        opcodes=[Opcode.NOP, Opcode.STA, Opcode.INC, Opcode.STAX, Opcode.INCX],
         opcode_filename="opcode_inc.py",
         player_filename="player_inc.s"
     )
