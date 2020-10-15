@@ -35,6 +35,7 @@ VOLTAGES = {
     Opcode.STAX: [1, 1, 1, -1, 1],
     Opcode.NOP: [1, 1],
     Opcode.NOP3: [1, 1, 1],
+    # TODO: support 6502 cycle counts as well
     Opcode.JMP_INDIRECT: [1, 1, 1, 1, 1, 1],
 }
 
@@ -129,9 +130,11 @@ def generate_player(max_cycles: int, opcodes: List[Opcode],
 
 if __name__ == "__main__":
     generate_player(
-        max_cycles=16,  # TODO: flag
+        max_cycles=17,  # TODO: flag
         # Opcode.NOP3,
-        opcodes=[Opcode.NOP, Opcode.STA, Opcode.INC, Opcode.STAX, Opcode.INCX],
+        opcodes=[Opcode.NOP, Opcode.STA, Opcode.STAX], # , Opcode.INC,
+        # Opcode.STAX,
+        # Opcode.INCX],
         opcode_filename="opcodes_generated.py",
         player_filename="player/player_generated.s"
     )
