@@ -27,9 +27,7 @@ possible.  This includes looking some number of cycles into the future to antici
 The resulting bytestream directs the Apple II to follow this speaker trajectory with cycle-level precision, and
 typically ends up toggling the speaker about 110000 times/second.
 
-XXX new player size
-
-The actual audio playback code is small enough (~150 bytes) to fit in page 3.  i.e. would have been small enough to type
+The core audio playback code is small enough (~190 bytes) to fit in page 3.  i.e. would have been small enough to type
 in from a magazine back in the day.  The megabytes of audio data would have been hard to type in though ;)  Plus,
 Uthernets didn't exist back then (although a Slinky RAM card would let you do something similar, see Future Work below).
 

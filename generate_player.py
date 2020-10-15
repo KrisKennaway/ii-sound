@@ -112,26 +112,26 @@ def generate_player(max_cycles: int, opcodes: List[Opcode],
         f.write("; %d bytes\n" % num_bytes)
 
     with open(opcode_filename, "w") as f:
-        f.write("import enum\n\n\n")
+        f.write("import enum\nimport numpy\n\n\n")
         f.write("class Opcode(enum.Enum):\n")
         for o in unique_opcodes.keys():
-            f.write("  TICK_%02x = 0x%02x\n" % (o, o))
-        f.write("  EXIT = 0x%02x\n" % (o + 3))
-        f.write("  SLOWPATH = 0x%02x\n" % (o + 6))
+            f.write("    TICK_%02x = 0x%02x\n" % (o, o))
+        f.write("    EXIT = 0x%02x\n" % num_bytes)
+        f.write("    SLOWPATH = 0x%02x\n" % (num_bytes + 3))
 
         f.write("\n\nVOLTAGE_SCHEDULE = {\n")
         for o, v in unique_opcodes.items():
             f.write(
-                "  Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float64),"
+                "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float64),"
                 "\n" % (o, v))
         f.write("}\n")
 
 
 if __name__ == "__main__":
     generate_player(
-        max_cycles=16,
+        max_cycles=16,  # TODO: flag
         # Opcode.NOP3,
         opcodes=[Opcode.NOP, Opcode.STA, Opcode.INC, Opcode.STAX, Opcode.INCX],
-        opcode_filename="opcode_inc.py",
-        player_filename="player_inc.s"
+        opcode_filename="opcodes_generated.py",
+        player_filename="player/player_generated.s"
     )
