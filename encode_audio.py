@@ -95,7 +95,7 @@ def evolve(opcode: opcodes.Opcode, starting_position, starting_voltage,
 
 
 @functools.lru_cache(None)
-def frame_horizon(frame_offset:int, lookahead_steps:int):
+def frame_horizon(frame_offset: int, lookahead_steps: int):
     """Optimize frame_offset when we're not within lookahead_steps of slowpath.
 
     When computing candidate opcodes, all frame offsets are the same until the
@@ -129,7 +129,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
     last_updated = 0
     opcode_counts = collections.defaultdict(int)
 
-    while i < int(dlen / 10):
+    while i < int(dlen / 1):
         if (i - last_updated) > int((dlen / 1000)):
             eta.print_status()
             last_updated = i
@@ -160,13 +160,13 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
 
 
 def preprocess(
-        filename: str, target_sample_rate: int,
-        normalize: float = 0.5) -> numpy.ndarray:
+        filename: str, target_sample_rate: int, normalize: float = 1.0,
+        normalization_percentile: int = 100) -> numpy.ndarray:
     """Upscale input audio to target sample rate and normalize signal."""
 
     data, _ = librosa.load(filename, sr=target_sample_rate, mono=True)
 
-    max_value = numpy.percentile(data, 100)
+    max_value = numpy.percentile(data, normalization_percentile)
     data /= max_value
     data *= normalize
 
