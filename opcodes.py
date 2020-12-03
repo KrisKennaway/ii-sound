@@ -66,27 +66,6 @@ def cycle_length(op: Opcode) -> int:
     return len(VOLTAGE_SCHEDULE[op])
 
 
-class _Opcodes:
-    """Container for immutable Iterable[Opcode], to improve hash performance."""
-
-    def __init__(self, opcodes: Iterable[Opcode]):
-        self.opcodes = tuple(opcodes)
-        self._hash = hash(self.opcodes)
-
-    def __hash__(self):
-        return self._hash
-
-
-# Guarantees each Tuple[Opcode] has a unique _Opcodes representation
-_OPCODES_SINGLETON = {}
-
-
-@functools.lru_cache(None)
-def Opcodes(opcodes: Tuple[Opcode]):
-    """Returns unique _Opcodes representation for Tuple[Opcode]."""
-    return _OPCODES_SINGLETON.setdefault(opcodes, _Opcodes(opcodes))
-
-
 @functools.lru_cache(None)
 def opcode_choices(frame_offset: int) -> List[Opcode]:
     """Returns sorted list of valid opcodes for given frame offset.
@@ -105,16 +84,6 @@ def opcode_choices(frame_offset: int) -> List[Opcode]:
 @functools.lru_cache(None)
 def opcode_lookahead(
         frame_offset: int,
-        lookahead_cycles: int) -> Tuple[_Opcodes]:
-    """Computes all valid sequences of opcodes spanning lookahead_cycles."""
-
-    return tuple(Opcodes(ops) for ops in
-                 _opcode_lookahead(frame_offset, lookahead_cycles))
-
-
-@functools.lru_cache(None)
-def _opcode_lookahead(
-        frame_offset: int,
         lookahead_cycles: int) -> Tuple[Tuple[Opcode]]:
     """Recursively enumerates all valid opcode sequences."""
 
@@ -124,53 +93,38 @@ def _opcode_lookahead(
         if cycle_length(op) >= lookahead_cycles:
             ops.append((op,))
         else:
-            for res in _opcode_lookahead((frame_offset + 1) % 2048,
-                                         lookahead_cycles - cycle_length(op)):
+            for res in opcode_lookahead((frame_offset + 1) % 2048,
+                                        lookahead_cycles - cycle_length(op)):
                 ops.append((op,) + res)
     return tuple(ops)  # TODO: fix return type
 
 
-class Cycles:
-    """Container for immutable Tuple[float], to improve hash performance."""
-
-    def __init__(self, cycles: Tuple[float]):
-        self.cycles = cycles
-        self._hash = hash(cycles)
-
-    def __hash__(self):
-        return self._hash
-
-
-# Guarantees each Tuple[float] has a unique Cycles representation
-_CYCLES_SINGLETON = {}
-
-
 @functools.lru_cache(None)
 def cycle_lookahead(
-        opcodes: _Opcodes,
+        opcodes: Tuple[Opcode],
         lookahead_cycles: int
-) -> Cycles:
+) -> Tuple[float]:
     """Computes the applied voltage effects of a sequence of opcodes.
 
     i.e. produces the sequence of applied voltage changes that will result
     from executing these opcodes, limited to the next lookahead_cycles.
     """
     cycles = []
-    for op in opcodes.opcodes:
+    for op in opcodes:
         cycles.extend(VOLTAGE_SCHEDULE[op])
-    trunc_cycles = tuple(cycles[:lookahead_cycles])
-    return _CYCLES_SINGLETON.setdefault(trunc_cycles, Cycles(trunc_cycles))
+    return tuple(cycles[:lookahead_cycles])
 
 
 @functools.lru_cache(None)
-def prune_opcodes(
-        opcodes: Tuple[_Opcodes], lookahead_cycles: int
-) -> Tuple[List[_Opcodes], numpy.ndarray]:
+def candidate_opcodes(
+        frame_offset: int, lookahead_cycles: int
+) -> Tuple[List[Opcode], numpy.ndarray]:
     """Deduplicate a tuple of opcode sequences that are equivalent.
 
     For each opcode sequence whose effect is the same when truncated to
     lookahead_cycles, retains the first such opcode sequence.
     """
+    opcodes = opcode_lookahead(frame_offset, lookahead_cycles)
     seen_cycles = set()
     pruned_opcodes = []
     pruned_cycles = []
@@ -180,6 +134,6 @@ def prune_opcodes(
             continue
         seen_cycles.add(cycles)
         pruned_opcodes.append(ops)
-        pruned_cycles.append(cycles.cycles)
+        pruned_cycles.append(cycles)
 
     return pruned_opcodes, numpy.array(pruned_cycles, dtype=numpy.float32)
