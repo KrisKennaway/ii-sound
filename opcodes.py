@@ -71,15 +71,17 @@ def cycle_lookahead(
     from executing these opcodes, limited to the next lookahead_cycles.
     """
     cycles = []
+    last_voltage = 1.0
     for op in opcodes:
-        cycles.extend(VOLTAGE_SCHEDULE[op])
+        cycles.extend(last_voltage * VOLTAGE_SCHEDULE[op])
+        last_voltage = cycles[-1]
     return tuple(cycles[:lookahead_cycles])
 
 
 @functools.lru_cache(None)
 def candidate_opcodes(
         frame_offset: int, lookahead_cycles: int
-) -> Tuple[List[Opcode], numpy.ndarray]:
+) -> Tuple[int, Tuple[Tuple[Opcode]], numpy.ndarray]:
     """Deduplicate a tuple of opcode sequences that are equivalent.
 
     For each opcode sequence whose effect is the same when truncated to
@@ -97,4 +99,8 @@ def candidate_opcodes(
         pruned_opcodes.append(ops)
         pruned_cycles.append(cycles)
 
-    return pruned_opcodes, numpy.array(pruned_cycles, dtype=numpy.float64)
+    pruned_opcodes = tuple(pruned_opcodes)
+    # Precompute and return the hash since it's relatively expensive to
+    # recompute.
+    return hash(pruned_opcodes), pruned_opcodes, numpy.array(pruned_cycles,
+                                              dtype=numpy.float32)
