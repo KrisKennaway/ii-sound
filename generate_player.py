@@ -53,7 +53,7 @@ def voltage_sequence(
 
 
 def all_opcodes(
-        max_len: int, opcodes: Iterable[Opcode]
+        max_len: int, opcodes: Iterable[Opcode], start_opcodes: Iterable[Opcode]
 ) -> Iterable[Tuple[Opcode]]:
     """Enumerate all combinations of opcodes up to max_len cycles"""
     num_opcodes = 0
@@ -61,6 +61,8 @@ def all_opcodes(
         found_one = False
         for ops in itertools.product(opcodes, repeat=num_opcodes):
             ops = tuple(list(ops) + [Opcode.JMP_INDIRECT])
+            if ops[0] not in start_opcodes:
+                continue
             if sum(len(VOLTAGES[o]) for o in ops) <= max_len:
                 found_one = True
                 yield ops
@@ -69,9 +71,9 @@ def all_opcodes(
         num_opcodes += 1
 
 
-def generate_player(max_cycles: int, opcodes: List[Opcode],
-                    opcode_filename: str,
-                    player_filename: str):
+def generate_player(
+        max_cycles: int, opcodes: List[Opcode], start_opcodes: List[Opcode],
+        opcode_filename: str, player_filename: str):
     num_bytes = 0
 
     seqs = {}
@@ -79,7 +81,7 @@ def generate_player(max_cycles: int, opcodes: List[Opcode],
     offset = 0
     unique_opcodes = {}
     all_ops = sorted(
-        list(all_opcodes(max_cycles, opcodes)),
+        list(all_opcodes(max_cycles, opcodes, start_opcodes)),
         key=lambda o: len(o), reverse=True)
 
     with open(player_filename, "w+") as f:
@@ -130,11 +132,17 @@ def generate_player(max_cycles: int, opcodes: List[Opcode],
 
 if __name__ == "__main__":
     generate_player(
-        max_cycles=17,  # TODO: flag
-        # Opcode.NOP3,
-        opcodes=[Opcode.NOP, Opcode.STA, Opcode.STAX], # , Opcode.INC,
-        # Opcode.STAX,
-        # Opcode.INCX],
+        max_cycles=19,  # TODO: flag
+        opcodes=[
+            Opcode.NOP,
+            Opcode.NOP3,
+            Opcode.STA,
+            # Opcode.INC,
+            # Opcode.INCX
+            # Opcode.STAX
+        ],
+        start_opcodes=[Opcode.STA, Opcode.INC, Opcode.INCX, Opcode.STAX,
+                       Opcode.JMP_INDIRECT],
         opcode_filename="opcodes_generated.py",
         player_filename="player/player_generated.s"
     )
