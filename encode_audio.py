@@ -145,9 +145,9 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
             opcode_partial_positions[op, voltage] = (
                 delta_powers, partial_positions, voltage * voltages[-1])
 
-    total_err = 0.0  # Total squared error of audio output.
+    total_err = 0.0  # Total squared error of audio output
     frame_offset = 0  # Position in 2048-byte TCP frame
-    i = 0  # index within data
+    i = 0  # index within input data
     eta = ETA(total=1000, min_ms_between_updates=0)
     next_tick = 0  # Value of i at which we should next update eta
     # Keep track of how many opcodes we schedule
@@ -208,7 +208,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
 
 
 def preprocess(
-        filename: str, target_sample_rate: int, normalize: float = 0.5,
+        filename: str, target_sample_rate: int, normalize: float = 1.0,
         normalization_percentile: int = 100) -> numpy.ndarray:
     """Upscale input audio to target sample rate and normalize signal."""
 
