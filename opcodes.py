@@ -102,5 +102,5 @@ def candidate_opcodes(
     pruned_opcodes = tuple(pruned_opcodes)
     # Precompute and return the hash since it's relatively expensive to
     # recompute.
-    return hash(pruned_opcodes), pruned_opcodes, numpy.array(pruned_cycles,
-                                              dtype=numpy.float32)
+    return hash(pruned_opcodes), pruned_opcodes, numpy.array(
+        pruned_cycles, dtype=numpy.float32)
