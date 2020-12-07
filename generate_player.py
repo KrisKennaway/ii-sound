@@ -71,21 +71,15 @@ def all_opcodes(
         num_opcodes += 1
 
 
-def generate_player(
-        max_cycles: int, opcodes: List[Opcode], start_opcodes: List[Opcode],
-        opcode_filename: str, player_filename: str):
+def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
+                    player_filename: str):
     num_bytes = 0
-
     seqs = {}
     num_op = 0
     offset = 0
     unique_opcodes = {}
-    all_ops = sorted(
-        list(all_opcodes(max_cycles, opcodes, start_opcodes)),
-        key=lambda o: len(o), reverse=True)
-
     with open(player_filename, "w+") as f:
-        for i, k in enumerate(all_ops):
+        for i, k in enumerate(player_ops):
             is_unique = False
             player_op = []
             player_op_len = 0
@@ -130,8 +124,16 @@ def generate_player(
         f.write("}\n")
 
 
+def all_opcode_combinations(
+        max_cycles: int, opcodes: List[Opcode], start_opcodes: List[Opcode]
+) -> List[Tuple[Opcode]]:
+    return sorted(
+        list(all_opcodes(max_cycles, opcodes, start_opcodes)),
+        key=lambda o: len(o), reverse=True)
+
+
 if __name__ == "__main__":
-    generate_player(
+    player_ops = all_opcode_combinations(
         max_cycles=19,  # TODO: flag
         opcodes=[
             Opcode.NOP,
@@ -142,7 +144,9 @@ if __name__ == "__main__":
             # Opcode.STAX
         ],
         start_opcodes=[Opcode.STA, Opcode.INC, Opcode.INCX, Opcode.STAX,
-                       Opcode.JMP_INDIRECT],
+                       Opcode.JMP_INDIRECT])
+    generate_player(
+        player_ops,
         opcode_filename="opcodes_generated.py",
         player_filename="player/player_generated.s"
     )
