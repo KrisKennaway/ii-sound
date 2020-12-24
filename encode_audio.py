@@ -226,13 +226,17 @@ def main(argv):
     step = int(argv[2])
 
     # TODO: if we're not looking ahead beyond the longest (non-slowpath) opcode
-    # then this will reduce quality, e.g. a long NOTICK and TICK will
-    # both look the same over a too-short horizon, but have different results.
+    # then this will reduce quality, e.g. two opcodes may truncate to the
+    # same prefix, but have different results when we apply them fully.
     lookahead_steps = int(argv[3])
     out = argv[4]
 
-    # TODO: PAL Apple ][ clock rate is slightly different
-    sample_rate = int(1024. * 1000)
+    # Effective clock rate, including every-65 cycle "long cycle" that takes
+    # 16/14 as long.
+    #
+    # NTSC: 1020484
+    # PAL //c: 1015625
+    sample_rate = 1015657  # PAL
 
     with open(out, "wb+") as f:
         for opcode in audio_bytestream(
