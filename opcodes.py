@@ -7,8 +7,8 @@ from typing import Dict, List, Tuple, Iterable
 
 def make_slowpath_voltages() -> numpy.ndarray:
     """Voltage sequence for slowpath TCP processing."""
-    length = 14 * 10 + 10  # TODO: 6502
-    c = numpy.full(length, 1.0, dtype=numpy.float64)
+    length = 4 + 14 * 10 + 6  # TODO: 6502
+    c = numpy.full(length, 1.0, dtype=numpy.float32)
     voltage_high = True
     for i in range(15):
         voltage_high = not voltage_high

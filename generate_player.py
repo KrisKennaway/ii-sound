@@ -72,7 +72,7 @@ def all_opcodes(
 
 
 def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
-                    player_filename: str):
+                    player_filename: str, truncate_to_page=True):
     num_bytes = 0
     seqs = {}
     num_op = 0
@@ -101,6 +101,9 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
             # If at least one of the partial opcode sequences was not
             # a dup, then add it to the player
             if is_unique:
+                if (num_bytes + player_op_len) >= 252:
+                    print("Out of space, truncating.")
+                    break
                 num_op += 1
                 f.write("\n".join(player_op))
                 num_bytes += player_op_len
@@ -119,7 +122,7 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
         f.write("\n\nVOLTAGE_SCHEDULE = {\n")
         for o, v in unique_opcodes.items():
             f.write(
-                "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float64),"
+                "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
                 "\n" % (o, v))
         f.write("}\n")
 
@@ -132,8 +135,18 @@ def all_opcode_combinations(
         key=lambda o: len(o), reverse=True)
 
 
+def sort_by_opcode_count(
+        player_opcodes: List[Tuple[Opcode]], count_opcodes: List[Opcode]
+) -> List[Tuple[Opcode]]:
+    return sorted(
+        player_opcodes, key=lambda ops: sum(o in count_opcodes for o in ops),
+        reverse=True)
+
+
 if __name__ == "__main__":
-    player_ops = all_opcode_combinations(
+    non_nops = [Opcode.STA, Opcode.INC, Opcode.INCX, Opcode.STAX,
+                Opcode.JMP_INDIRECT]
+    player_ops = sort_by_opcode_count(all_opcode_combinations(
         max_cycles=19,  # TODO: flag
         opcodes=[
             Opcode.NOP,
@@ -143,8 +156,7 @@ if __name__ == "__main__":
             # Opcode.INCX
             # Opcode.STAX
         ],
-        start_opcodes=[Opcode.STA, Opcode.INC, Opcode.INCX, Opcode.STAX,
-                       Opcode.JMP_INDIRECT])
+        start_opcodes=non_nops), non_nops)
     generate_player(
         player_ops,
         opcode_filename="opcodes_generated.py",
