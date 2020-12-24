@@ -397,5 +397,5 @@ checkrecv:
     STX WADRL  ; 4
     NOP ; 2
     STA TICK ; 4 [10]
-    JMP (WDATA) ; 6 [10/14]
+    JMP (WDATA) ; 6
 .endproc
