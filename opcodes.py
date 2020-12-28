@@ -10,16 +10,20 @@ def make_slowpath_voltages() -> numpy.ndarray:
     length = 4 + 14 * 10 + 6  # TODO: 6502
     c = numpy.full(length, 1.0, dtype=numpy.float32)
     voltage_high = True
+    toggles = 0
     for i in range(15):
         voltage_high = not voltage_high
+        toggles += 1
         for j in range(3 + 10 * i, min(length, 3 + 10 * (i + 1))):
             c[j] = 1.0 if voltage_high else -1.0
-    return c
+    return c, toggles
 
 
 Opcode = opcodes_generated.Opcode
+TOGGLES = opcodes_generated.TOGGLES
 VOLTAGE_SCHEDULE = opcodes_generated.VOLTAGE_SCHEDULE
-VOLTAGE_SCHEDULE[Opcode.SLOWPATH] = make_slowpath_voltages()
+VOLTAGE_SCHEDULE[Opcode.SLOWPATH], TOGGLES[Opcode.SLOWPATH] = (
+    make_slowpath_voltages())
 
 
 def cycle_length(op: Opcode) -> int:
