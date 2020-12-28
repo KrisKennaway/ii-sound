@@ -99,7 +99,7 @@ def frame_horizon(frame_offset: int, lookahead_steps: int):
 
 
 def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
-                     sample_rate: int):
+                     sample_rate: int, is_6502: bool):
     """Computes optimal sequence of player opcodes to reproduce audio data."""
 
     dlen = len(data)
@@ -108,8 +108,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # TODO: avoid temporarily doubling memory footprint to concatenate
     data = numpy.ascontiguousarray(numpy.concatenate(
         [data, numpy.zeros(max(lookahead_steps, opcodes.cycle_length(
-            opcodes.Opcode.SLOWPATH)),
-                           dtype=numpy.float32)]))
+            opcodes.Opcode.SLOWPATH, is_6502)), dtype=numpy.float32)]))
 
     # Starting speaker position and applied voltage.
     position = 0.0
@@ -121,7 +120,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     for i in range(2048):
         for voltage in [-1.0, 1.0]:
             opcode_hash, _, voltages = opcodes.candidate_opcodes(
-                frame_horizon(i, lookahead_steps), lookahead_steps)
+                frame_horizon(i, lookahead_steps), lookahead_steps, is_6502)
             delta_powers, partial_positions = _partial_positions(
                 voltage * voltages, step)
 
@@ -135,12 +134,14 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
                 delta_powers, partial_positions)
 
     opcode_partial_positions = {}
-    for op, voltages in opcodes.VOLTAGE_SCHEDULE.items():
+    all_opcodes = opcodes.Opcode.__members__.values()
+    for op in set(all_opcodes) - {opcodes.Opcode.EXIT}:
+        voltages = opcodes.voltage_schedule(op, is_6502)
         for voltage in [-1.0, 1.0]:
             delta_powers, partial_positions = _partial_positions(
                 voltage * voltages, step)
             assert delta_powers.shape == partial_positions.shape
-            assert delta_powers.shape[-1] == opcodes.cycle_length(op)
+            assert delta_powers.shape[-1] == opcodes.cycle_length(op, is_6502)
             opcode_partial_positions[op, voltage] = (
                 delta_powers, partial_positions, voltage * voltages[-1])
 
@@ -158,7 +159,8 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
         # Compute all possible opcode sequences for this frame offset
         opcode_hash, candidate_opcodes, _ = opcodes.candidate_opcodes(
-            frame_horizon(frame_offset, lookahead_steps), lookahead_steps)
+            frame_horizon(frame_offset, lookahead_steps), lookahead_steps,
+            is_6502)
         # Look up the precomputed partial values for these candidate opcode
         # sequences.
         delta_powers, partial_positions = all_partial_positions[opcode_hash,
@@ -175,7 +177,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             total_error(all_positions, data[i:i + lookahead_steps])).item()
         # Next opcode
         opcode = candidate_opcodes[opcode_idx][0]
-        opcode_length = opcodes.cycle_length(opcode)
+        opcode_length = opcodes.cycle_length(opcode, is_6502)
         opcode_counts[opcode] += 1
         toggles += opcodes.TOGGLES[opcode]
 
@@ -251,7 +253,7 @@ def main():
     with open(args.output, "wb+") as f:
         for opcode in audio_bytestream(
                 preprocess(args.input, sample_rate), args.step_size,
-                args.lookahead_cycles, sample_rate):
+                args.lookahead_cycles, sample_rate, args.cpu == '6502'):
             f.write(bytes([opcode.value]))
 
 

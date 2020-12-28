@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Iterable
 
 def make_slowpath_voltages() -> numpy.ndarray:
     """Voltage sequence for slowpath TCP processing."""
-    length = 4 + 14 * 10 + 6  # TODO: 6502
+    length = 4 + 14 * 10 + 6
     c = numpy.full(length, 1.0, dtype=numpy.float32)
     voltage_high = True
     toggles = 0
@@ -21,18 +21,27 @@ def make_slowpath_voltages() -> numpy.ndarray:
 
 Opcode = opcodes_generated.Opcode
 TOGGLES = opcodes_generated.TOGGLES
-VOLTAGE_SCHEDULE = opcodes_generated.VOLTAGE_SCHEDULE
-VOLTAGE_SCHEDULE[Opcode.SLOWPATH], TOGGLES[Opcode.SLOWPATH] = (
+_VOLTAGE_SCHEDULE = opcodes_generated.VOLTAGE_SCHEDULE
+_VOLTAGE_SCHEDULE[Opcode.SLOWPATH], TOGGLES[Opcode.SLOWPATH] = (
     make_slowpath_voltages())
 
 
-def cycle_length(op: Opcode) -> int:
-    """Returns the 65C02 cycle length of a player opcode."""
-    return len(VOLTAGE_SCHEDULE[op])
+def cycle_length(op: Opcode, is_6502: bool) -> int:
+    """Returns the 65[C]02 cycle length of a player opcode."""
+    l = len(_VOLTAGE_SCHEDULE[op])
+    # JMP (indirect) is 5 cycles for 6502 instead of 6
+    return l - 1 if is_6502 else l
+
+
+def voltage_schedule(op: Opcode, is_6502: bool) -> numpy.ndarray:
+    """Returns the 65[C]02 applied voltage schedule of a player opcode."""
+    v = _VOLTAGE_SCHEDULE[op]
+    # JMP (indirect) is 5 cycles for 6502 instead of 6
+    return v[:-1] if is_6502 else v
 
 
 @functools.lru_cache(None)
-def opcode_choices(frame_offset: int) -> List[Opcode]:
+def opcode_choices(frame_offset: int, is_6502: bool) -> List[Opcode]:
     """Returns sorted list of valid opcodes for given frame offset.
 
     Sorted by decreasing cycle length, so that if two opcodes produce equally
@@ -42,24 +51,28 @@ def opcode_choices(frame_offset: int) -> List[Opcode]:
     if frame_offset == 2047:
         return [Opcode.SLOWPATH]
 
-    opcodes = set(VOLTAGE_SCHEDULE.keys()) - {Opcode.SLOWPATH}
-    return sorted(list(opcodes), key=cycle_length, reverse=True)
+    def _cycle_length(op: Opcode) -> int:
+        return cycle_length(op, is_6502)
+
+    opcodes = set(_VOLTAGE_SCHEDULE.keys()) - {Opcode.SLOWPATH}
+    return sorted(list(opcodes), key=_cycle_length, reverse=True)
 
 
 @functools.lru_cache(None)
 def opcode_lookahead(
         frame_offset: int,
-        lookahead_cycles: int) -> Tuple[Tuple[Opcode]]:
+        lookahead_cycles: int, is_6502: bool) -> Tuple[Tuple[Opcode]]:
     """Recursively enumerates all valid opcode sequences."""
 
-    ch = opcode_choices(frame_offset)
+    ch = opcode_choices(frame_offset, is_6502)
     ops = []
     for op in ch:
-        if cycle_length(op) >= lookahead_cycles:
+        if cycle_length(op, is_6502) >= lookahead_cycles:
             ops.append((op,))
         else:
-            for res in opcode_lookahead((frame_offset + 1) % 2048,
-                                        lookahead_cycles - cycle_length(op)):
+            for res in opcode_lookahead(
+                    (frame_offset + 1) % 2048,
+                    lookahead_cycles - cycle_length(op, is_6502), is_6502):
                 ops.append((op,) + res)
     return tuple(ops)  # TODO: fix return type
 
@@ -67,8 +80,7 @@ def opcode_lookahead(
 @functools.lru_cache(None)
 def cycle_lookahead(
         opcodes: Tuple[Opcode],
-        lookahead_cycles: int
-) -> Tuple[float]:
+        lookahead_cycles: int, is_6502: bool) -> Tuple[float]:
     """Computes the applied voltage effects of a sequence of opcodes.
 
     i.e. produces the sequence of applied voltage changes that will result
@@ -77,26 +89,26 @@ def cycle_lookahead(
     cycles = []
     last_voltage = 1.0
     for op in opcodes:
-        cycles.extend(last_voltage * VOLTAGE_SCHEDULE[op])
+        cycles.extend(last_voltage * voltage_schedule(op, is_6502))
         last_voltage = cycles[-1]
     return tuple(cycles[:lookahead_cycles])
 
 
 @functools.lru_cache(None)
 def candidate_opcodes(
-        frame_offset: int, lookahead_cycles: int
+        frame_offset: int, lookahead_cycles: int, is_6502: bool
 ) -> Tuple[int, Tuple[Tuple[Opcode]], numpy.ndarray]:
     """Deduplicate a tuple of opcode sequences that are equivalent.
 
     For each opcode sequence whose effect is the same when truncated to
     lookahead_cycles, retains the first such opcode sequence.
     """
-    opcodes = opcode_lookahead(frame_offset, lookahead_cycles)
+    opcodes = opcode_lookahead(frame_offset, lookahead_cycles, is_6502)
     seen_cycles = set()
     pruned_opcodes = []
     pruned_cycles = []
     for ops in opcodes:
-        cycles = cycle_lookahead(ops, lookahead_cycles)
+        cycles = cycle_lookahead(ops, lookahead_cycles, is_6502)
         if cycles in seen_cycles:
             continue
         seen_cycles.add(cycles)
