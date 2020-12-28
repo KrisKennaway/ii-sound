@@ -101,7 +101,8 @@ def frame_horizon(frame_offset: int, lookahead_steps: int):
     return frame_offset
 
 
-def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
+def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
+                     sample_rate: int):
     """Computes optimal sequence of player opcodes to reproduce audio data."""
 
     dlen = len(data)
@@ -117,6 +118,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
     position = 0.0
     voltage = -1.0
 
+    toggles = 0
     all_partial_positions = {}
     # Precompute partial_positions so we don't skew ETA during encoding.
     for i in range(2048):
@@ -178,6 +180,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
         opcode = candidate_opcodes[opcode_idx][0]
         opcode_length = opcodes.cycle_length(opcode)
         opcode_counts[opcode] += 1
+        toggles += opcodes.TOGGLES[opcode]
 
         # Apply this opcode to evolve the speaker position
         delta_powers, partial_positions, last_voltage = \
@@ -200,6 +203,8 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int):
         yield opcodes.Opcode.EXIT
     eta.done()
     print("Total error %f" % total_err)
+    toggles_per_sec = toggles / dlen * sample_rate
+    print("%d speaker toggles/sec" % toggles_per_sec)
 
     print("Opcodes used:")
     for v, k in sorted(list(opcode_counts.items()), key=lambda kv: kv[1],
@@ -240,7 +245,8 @@ def main(argv):
 
     with open(out, "wb+") as f:
         for opcode in audio_bytestream(
-                preprocess(serve_file, sample_rate), step, lookahead_steps):
+                preprocess(serve_file, sample_rate), step, lookahead_steps,
+                sample_rate):
             f.write(bytes([opcode.value]))
 
 
