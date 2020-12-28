@@ -60,7 +60,7 @@ def voltage_sequence(
 
 
 def all_opcodes(
-        max_len: int, opcodes: Iterable[Opcode], start_opcodes: Iterable[Opcode]
+        max_len: int, opcodes: Iterable[Opcode], start_opcodes: Iterable[int]
 ) -> Iterable[Tuple[Opcode]]:
     """Enumerate all combinations of opcodes up to max_len cycles"""
     num_opcodes = 0
@@ -109,7 +109,7 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
             # If at least one of the partial opcode sequences was not
             # a dup, then add it to the player
             if new_unique:
-                # Reserve 9 bytes for EXIT and SLOWPATH
+                # Reserve 9 bytes for END_OF_FRAME and EXIT
                 if (num_bytes + player_op_len) > (256 - 9):
                     print("Out of space, truncating.")
                     break
@@ -129,7 +129,7 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
         for o in unique_opcodes.keys():
             f.write("    TICK_%02x = 0x%02x\n" % (o, o))
         f.write("    EXIT = 0x%02x\n" % num_bytes)
-        f.write("    SLOWPATH = 0x%02x\n" % (num_bytes + 3))
+        f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
 
         f.write("\n\nVOLTAGE_SCHEDULE = {\n")
         for o, v in unique_opcodes.items():
@@ -147,7 +147,7 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
 
 
 def all_opcode_combinations(
-        max_cycles: int, opcodes: List[Opcode], start_opcodes: List[Opcode]
+        max_cycles: int, opcodes: Iterable[Opcode], start_opcodes: List[int]
 ) -> List[Tuple[Opcode]]:
     return sorted(
         list(all_opcodes(max_cycles, opcodes, start_opcodes)),
@@ -155,7 +155,7 @@ def all_opcode_combinations(
 
 
 def sort_by_opcode_count(
-        player_opcodes: List[Tuple[Opcode]], count_opcodes: List[Opcode]
+        player_opcodes: List[Tuple[Opcode]], count_opcodes: List[int]
 ) -> List[Tuple[Opcode]]:
     return sorted(
         player_opcodes, key=lambda ops: sum(o in count_opcodes for o in ops),
@@ -164,15 +164,16 @@ def sort_by_opcode_count(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max_cycles", default=25,
+    parser.add_argument("--max_cycles", type=int, required=True,
                         help="Maximum cycle length of player opcodes")
-    parser.add_argument("opcodes", default=["NOP3", "STA"], nargs="+",
+    parser.add_argument("opcodes", nargs="+",
                         choices=Opcode.__members__.keys(),
                         help="6502 opcodes to use when generating player "
                              "opcodes")
     args = parser.parse_args()
 
     opcodes = set(Opcode.__members__[op] for op in args.opcodes)
+    # TODO: use Opcode instead of int values
     non_nops = [Opcode.STA, Opcode.INC, Opcode.INCX, Opcode.STAX,
                 Opcode.JMP_INDIRECT]
 

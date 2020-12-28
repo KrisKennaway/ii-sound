@@ -6,6 +6,7 @@
 # reproduce a target audio waveform, we upscale it to 1MHz sample rate,
 # and compute the sequence of player opcodes to best reproduce this waveform.
 #
+# XXX
 # Since the player opcodes are chosen to allow ticking the speaker during any
 # given clock cycle (though with some limits on the minimum time
 # between ticks), this means that we are able to control the Apple II speaker
@@ -17,11 +18,11 @@
 # e.g. this allows us to anticipate large amplitude changes by pre-moving
 # the speaker to better approximate them.
 #
-# This also needs to take into account scheduling the "slow path" opcode every
-# 2048 output bytes, where the Apple II will manage the TCP socket buffer while
-# ticking the speaker at a regular cadence of 13 cycles to keep it in a
-# net-neutral position.  When looking ahead we can also (partially)
-# compensate for this "dead" period by pre-positioning.
+# This also needs to take into account scheduling the "end of frame" opcode
+# every 2048 output bytes, where the Apple II will manage the TCP socket buffer
+# while ticking the speaker at a regular cadence to keep it in a net-neutral
+# position.  When looking ahead we can also (partially) compensate for this
+# "dead" period by pre-positioning.
 
 import argparse
 import collections
@@ -86,10 +87,10 @@ def total_error(positions: numpy.ndarray, data: numpy.ndarray) -> numpy.ndarray:
 
 @functools.lru_cache(None)
 def frame_horizon(frame_offset: int, lookahead_steps: int):
-    """Optimize frame_offset when we're not within lookahead_steps of slowpath.
+    """Optimize frame_offset when more than lookahead_steps from end of frame.
 
-    When computing candidate opcodes, all frame offsets are the same until the
-    end-of-frame slowpath comes within our lookahead horizon.
+    Candidate opcodes for all values of frame_offset are equal, until the
+    end-of-frame opcode comes within our lookahead horizon.
     """
     # TODO: This could be made tighter because a step is always at least 5
     #  cycles towards lookahead_steps.
@@ -104,11 +105,11 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     dlen = len(data)
     # Leave enough padding at the end to look ahead from the last data value,
-    # and in case we schedule a slowpath opcode towards the end.
+    # and in case we schedule an end-of-frame opcode towards the end.
     # TODO: avoid temporarily doubling memory footprint to concatenate
     data = numpy.ascontiguousarray(numpy.concatenate(
         [data, numpy.zeros(max(lookahead_steps, opcodes.cycle_length(
-            opcodes.Opcode.SLOWPATH, is_6502)), dtype=numpy.float32)]))
+            opcodes.Opcode.END_OF_FRAME, is_6502)), dtype=numpy.float32)]))
 
     # Starting speaker position and applied voltage.
     position = 0.0
@@ -212,8 +213,8 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
 
 def preprocess(
-        filename: str, target_sample_rate: int, normalize: float = 1.0,
-        normalization_percentile: int = 100) -> numpy.ndarray:
+        filename: str, target_sample_rate: int, normalize: float,
+        normalization_percentile: int) -> numpy.ndarray:
     """Upscale input audio to target sample rate and normalize signal."""
 
     data, _ = librosa.load(filename, sr=target_sample_rate, mono=True)
@@ -236,12 +237,19 @@ def main():
                         help="Target machine CPU type")
     parser.add_argument("--step_size", type=int,
                         help="Delta encoding step size")
-    # TODO: if we're not looking ahead beyond the longest (non-slowpath) opcode
+    # TODO: if we're not looking ahead beyond the longest (non-end-of-frame)
+    #  opcode
     # then this will reduce quality, e.g. two opcodes may truncate to the
     # same prefix, but have different results when we apply them fully.
     parser.add_argument("--lookahead_cycles", type=int,
                         help="Number of clock cycles to look ahead in audio "
                              "stream.")
+    parser.add_argument("--normalization", default=1.0, type=float,
+                        help="Overall multiplier to rescale input audio "
+                             "values.")
+    parser.add_argument("--norm_percentile", default=99,
+                        help="Normalize to specified percentile value of input "
+                             "audio")
     parser.add_argument("input", type=str, help="input audio file to convert")
     parser.add_argument("output", type=str, help="output audio file")
     args = parser.parse_args()
@@ -252,7 +260,8 @@ def main():
 
     with open(args.output, "wb+") as f:
         for opcode in audio_bytestream(
-                preprocess(args.input, sample_rate), args.step_size,
+                preprocess(args.input, sample_rate, args.normalization,
+                           args.norm_percentile), args.step_size,
                 args.lookahead_cycles, sample_rate, args.cpu == '6502'):
             f.write(bytes([opcode.value]))
 

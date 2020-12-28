@@ -286,14 +286,11 @@ exit_parmtable:
     .BYTE 0             ; Byte reserved for future use
     .WORD 0000          ; Pointer reserved for future use
 
-; real_slowpath:
-
 ; The actual player code, which will be copied to $3xx for execution
 ;
 ; opcode cycle counts are for 65c02, for 6502 they are 1 less because JMP (indirect) is 5 cycles instead of 6.
 
 begin_copy_page1:
-
 ; generated audio playback code
 .include "player_generated.s"
 
@@ -318,12 +315,12 @@ exit:
 ; If we do stall waiting for data then there is no need to worry about maintaining an even cadence, because audio
 ; will already be disrupted (since the encoder won't have predicted it, so will be tracking wrong).  The speaker will
 ; resynchronize within a few hundred microseconds though.
-slowpath:
+end_of_frame:
     STA TICK ; 4
-    JMP _slowpath ; 3 rest of slowpath doesn't fit in page 3
+    JMP _end_of_frame ; 3 rest of end_of_frame doesn't fit in page 3
 end_copy_page1:
 
-_slowpath:
+_end_of_frame:
     STA zpdummy ; 3
     ; Save the W5100 address pointer so we can come back here later
     ; We know the low-order byte is 0 because Socket RX memory is page-aligned and so is 2K frame.

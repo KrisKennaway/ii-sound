@@ -5,8 +5,8 @@ import numpy
 from typing import Dict, List, Tuple, Iterable
 
 
-def make_slowpath_voltages() -> numpy.ndarray:
-    """Voltage sequence for slowpath TCP processing."""
+def _make_end_of_frame_voltages() -> numpy.ndarray:
+    """Voltage sequence for end-of-frame TCP processing."""
     length = 4 + 14 * 10 + 6
     c = numpy.full(length, 1.0, dtype=numpy.float32)
     voltage_high = True
@@ -22,8 +22,8 @@ def make_slowpath_voltages() -> numpy.ndarray:
 Opcode = opcodes_generated.Opcode
 TOGGLES = opcodes_generated.TOGGLES
 _VOLTAGE_SCHEDULE = opcodes_generated.VOLTAGE_SCHEDULE
-_VOLTAGE_SCHEDULE[Opcode.SLOWPATH], TOGGLES[Opcode.SLOWPATH] = (
-    make_slowpath_voltages())
+_VOLTAGE_SCHEDULE[Opcode.END_OF_FRAME], TOGGLES[Opcode.END_OF_FRAME] = (
+    _make_end_of_frame_voltages())
 
 
 def cycle_length(op: Opcode, is_6502: bool) -> int:
@@ -49,12 +49,12 @@ def opcode_choices(frame_offset: int, is_6502: bool) -> List[Opcode]:
     stream bitrate.
     """
     if frame_offset == 2047:
-        return [Opcode.SLOWPATH]
+        return [Opcode.END_OF_FRAME]
 
     def _cycle_length(op: Opcode) -> int:
         return cycle_length(op, is_6502)
 
-    opcodes = set(_VOLTAGE_SCHEDULE.keys()) - {Opcode.SLOWPATH}
+    opcodes = set(_VOLTAGE_SCHEDULE.keys()) - {Opcode.END_OF_FRAME}
     return sorted(list(opcodes), key=_cycle_length, reverse=True)
 
 
