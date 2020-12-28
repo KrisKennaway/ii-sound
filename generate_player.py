@@ -1,3 +1,4 @@
+import argparse
 import enum
 import itertools
 import numpy
@@ -161,23 +162,29 @@ def sort_by_opcode_count(
         reverse=True)
 
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max_cycles", default=25,
+                        help="Maximum cycle length of player opcodes")
+    parser.add_argument("opcodes", default=["NOP3", "STA"], nargs="+",
+                        choices=Opcode.__members__.keys(),
+                        help="6502 opcodes to use when generating player "
+                             "opcodes")
+    args = parser.parse_args()
+
+    opcodes = set(Opcode.__members__[op] for op in args.opcodes)
     non_nops = [Opcode.STA, Opcode.INC, Opcode.INCX, Opcode.STAX,
                 Opcode.JMP_INDIRECT]
+
     player_ops = sort_by_opcode_count(all_opcode_combinations(
-        max_cycles=19,  # TODO: flag
-        opcodes=[
-            Opcode.NOP,
-            Opcode.NOP3,
-            # Opcode.NOPNOP,
-            Opcode.STA,
-            # Opcode.INC,
-            # Opcode.INCX
-            # Opcode.STAX
-        ],
-        start_opcodes=non_nops), non_nops)
+        max_cycles=args.max_cycles, opcodes=opcodes, start_opcodes=non_nops),
+        non_nops)
     generate_player(
         player_ops,
         opcode_filename="opcodes_generated.py",
         player_filename="player/player_generated.s"
     )
+
+
+if __name__ == "__main__":
+    main()

@@ -23,18 +23,15 @@
 # net-neutral position.  When looking ahead we can also (partially)
 # compensate for this "dead" period by pre-positioning.
 
+import argparse
 import collections
 import functools
-import sys
 import librosa
 import numpy
 from eta import ETA
-from typing import Tuple
 
 import opcodes
 
-
-# TODO: add flags to parametrize options
 
 # We simulate the speaker voltage trajectory resulting from applying multiple
 # voltage profiles, compute the resulting squared error relative to the target
@@ -226,29 +223,37 @@ def preprocess(
     return data
 
 
-def main(argv):
-    serve_file = argv[1]
-    step = int(argv[2])
-
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clock", choices=['pal', 'ntsc'],
+                        help="Whether target machine clock speed is PAL ("
+                             "1015657Hz) or NTSC (1020484)",
+                        required=True)
+    # TODO: implement 6502
+    parser.add_argument("--cpu", choices=['6502', '65c02'], default='65c02',
+                        help="Target machine CPU type")
+    parser.add_argument("--step_size", type=int,
+                        help="Delta encoding step size")
     # TODO: if we're not looking ahead beyond the longest (non-slowpath) opcode
     # then this will reduce quality, e.g. two opcodes may truncate to the
     # same prefix, but have different results when we apply them fully.
-    lookahead_steps = int(argv[3])
-    out = argv[4]
+    parser.add_argument("--lookahead_cycles", type=int,
+                        help="Number of clock cycles to look ahead in audio "
+                             "stream.")
+    parser.add_argument("input", type=str, help="input audio file to convert")
+    parser.add_argument("output", type=str, help="output audio file")
+    args = parser.parse_args()
 
     # Effective clock rate, including every-65 cycle "long cycle" that takes
     # 16/14 as long.
-    #
-    # NTSC: 1020484
-    # PAL //c: 1015625
-    sample_rate = 1015657  # PAL
+    sample_rate = 1015657 if args.clock == 'pal' else 1020484  # NTSC
 
-    with open(out, "wb+") as f:
+    with open(args.output, "wb+") as f:
         for opcode in audio_bytestream(
-                preprocess(serve_file, sample_rate), step, lookahead_steps,
-                sample_rate):
+                preprocess(args.input, sample_rate), args.step_size,
+                args.lookahead_cycles, sample_rate):
             f.write(bytes([opcode.value]))
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
