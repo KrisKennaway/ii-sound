@@ -238,9 +238,9 @@ def main():
     parser.add_argument("--step_size", type=int,
                         help="Delta encoding step size")
     # TODO: if we're not looking ahead beyond the longest (non-end-of-frame)
-    #  opcode
-    # then this will reduce quality, e.g. two opcodes may truncate to the
-    # same prefix, but have different results when we apply them fully.
+    #  opcode then this will reduce quality, e.g. two opcodes may truncate to
+    #  the same prefix, but have different results when we apply them
+    #  fully.
     parser.add_argument("--lookahead_cycles", type=int,
                         help="Number of clock cycles to look ahead in audio "
                              "stream.")
