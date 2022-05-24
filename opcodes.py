@@ -4,26 +4,32 @@ import opcodes_generated
 import numpy
 from typing import Dict, List, Tuple, Iterable
 
-
-def _make_end_of_frame_voltages() -> numpy.ndarray:
-    """Voltage sequence for end-of-frame TCP processing."""
-    length = 4 + 14 * 10 + 6
-    c = numpy.full(length, 1.0, dtype=numpy.float32)
-    voltage_high = True
-    toggles = 0
-    for i in range(15):
-        voltage_high = not voltage_high
-        toggles += 1
-        for j in range(3 + 10 * i, min(length, 3 + 10 * (i + 1))):
-            c[j] = 1.0 if voltage_high else -1.0
-    return c, toggles
+#
+# def _make_end_of_frame_voltages(bits) -> numpy.ndarray:
+#     """Voltage sequence for end-of-frame TCP processing."""
+#     length = 8 * 20  # 4 + 14 * 10 + 6
+#     c = numpy.full(length, 1.0, dtype=numpy.float32)
+#     voltage_high = True
+#     toggles = 0
+#     for i in range(8):
+#         if bool((bits >> i) & 1):
+#             voltage_high = not voltage_high
+#             toggles += 1
+#         for j in range(3 + 20 * i, min(length, 3 + 20 * (i + 1))):
+#             c[j] = 1.0 if voltage_high else -1.0
+#     return c, toggles
 
 
 Opcode = opcodes_generated.Opcode
 TOGGLES = opcodes_generated.TOGGLES
 _VOLTAGE_SCHEDULE = opcodes_generated.VOLTAGE_SCHEDULE
-_VOLTAGE_SCHEDULE[Opcode.END_OF_FRAME], TOGGLES[Opcode.END_OF_FRAME] = (
-    _make_end_of_frame_voltages())
+# _VOLTAGE_SCHEDULE[Opcode.END_OF_FRAME], TOGGLES[Opcode.END_OF_FRAME] = (
+#     _make_end_of_frame_voltages())
+
+# _VOLTAGE_EOF = {}
+# # _TOGGLES_EOF = {}
+# for i in range(256):
+#     _VOLTAGE_EOF[i], _ = _make_end_of_frame_voltages(i)
 
 
 def cycle_length(op: Opcode, is_6502: bool) -> int:
@@ -49,12 +55,13 @@ def opcode_choices(frame_offset: int, is_6502: bool) -> List[Opcode]:
     stream bitrate.
     """
     if frame_offset == 2047:
-        return [Opcode.END_OF_FRAME]
+        return opcodes_generated.EOF_OPCODES
 
     def _cycle_length(op: Opcode) -> int:
         return cycle_length(op, is_6502)
 
-    opcodes = set(_VOLTAGE_SCHEDULE.keys()) - {Opcode.END_OF_FRAME}
+    opcodes = set(_VOLTAGE_SCHEDULE.keys()) - set(opcodes_generated.EOF_OPCODES)
+    # print(frame_offset, opcodes)
     return sorted(list(opcodes), key=_cycle_length, reverse=True)
 
 
@@ -104,6 +111,14 @@ def candidate_opcodes(
     lookahead_cycles, retains the first such opcode sequence.
     """
     opcodes = opcode_lookahead(frame_offset, lookahead_cycles, is_6502)
+    # Look ahead over the common cycle subsequence to make sure we see as far
+    # as possible into the future
+    cycles = []
+    for ops in opcodes:
+        op_len = sum(cycle_length(op, is_6502) for op in ops)
+        cycles.append(op_len)
+    # print(cycles)
+    lookahead_cycles = min(cycles)
     seen_cycles = set()
     pruned_opcodes = []
     pruned_cycles = []
@@ -119,4 +134,4 @@ def candidate_opcodes(
     # Precompute and return the hash since it's relatively expensive to
     # recompute.
     return hash(pruned_opcodes), pruned_opcodes, numpy.array(
-        pruned_cycles, dtype=numpy.float32)
+        pruned_cycles, dtype=numpy.float32), lookahead_cycles

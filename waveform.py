@@ -29,21 +29,26 @@ def wave(count: int):
     x1 = 1.0
     th = 44100/3875/2
     switch = th
-    scale = 25  # TODO: analytic expression
+    scale = 3  # TODO: analytic expression
+    maxy = 0
     for i in range(count):
         y = c1 * y1 - c2 * y2 + b1 * x1 + b2 * x2
         x2 = x1
-        if i >= switch:
-            x1 = -x1
-            switch += th
+        # if i >= switch:
+        #     x1 = -x1
+        #     switch += th
         y2 = y1
         y1 = y
+        if math.fabs(y) > maxy:
+            maxy = math.fabs(y)
         yield y / scale
+    print(maxy)
 
 
 def main():
-    with sf.SoundFile("out.wav", "w", samplerate=44100, channels=1) as f:
-        f.write(list(wave(441000)))
+    print(list(wave(1020400)))
+    # with sf.SoundFile("out.wav", "w", samplerate=44100, channels=1) as f:
+    #     f.write(list(wave(441000)))
 
 
 if __name__ == "__main__":

@@ -78,6 +78,24 @@ def all_opcodes(
         num_opcodes += 1
 
 
+def _make_end_of_frame_voltages(skip) -> numpy.ndarray:
+    """Voltage sequence for end-of-frame TCP processing."""
+    length = 160  # 4 + 14 * 10 + 6
+    c = numpy.full(length, 1.0, dtype=numpy.float32)
+    voltage_high = True
+    # toggles = 0
+    for i in range(0, 16):
+        voltage_high = not voltage_high
+        # toggles += 1
+        for j in range(3 + 10 * i + skip , min(length, 3 + 10 * (i + 1) +
+                                                       skip)):
+            c[j] = 1.0 if voltage_high else -1.0
+    return c
+
+
+eof_bits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+
 def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
                     player_filename: str):
     num_bytes = 0
@@ -129,13 +147,20 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
         for o in unique_opcodes.keys():
             f.write("    TICK_%02x = 0x%02x\n" % (o, o))
         f.write("    EXIT = 0x%02x\n" % num_bytes)
-        f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
+        # f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
+        for i in eof_bits:
+            f.write("    END_OF_FRAME_%d = 0x%02x\n" % (i, num_bytes + 4 + i))
 
         f.write("\n\nVOLTAGE_SCHEDULE = {\n")
         for o, v in unique_opcodes.items():
             f.write(
                 "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
                 "\n" % (o, v))
+        for i in eof_bits:
+            f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
+                    "dtype=numpy.float32),\n" % (i, ", ".join(
+                str(f) for f in _make_end_of_frame_voltages(
+                    i))))
         f.write("}\n")
 
         f.write("\n\nTOGGLES = {\n")
@@ -144,6 +169,11 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
                 "    Opcode.TICK_%02x: %d,\n" % (o, v)
             )
         f.write("}\n")
+
+        f.write("\n\nEOF_OPCODES = (\n")
+        for i in eof_bits:
+            f.write("    Opcode.END_OF_FRAME_%d,\n" % i)
+        f.write(")\n")
 
 
 def all_opcode_combinations(

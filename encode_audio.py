@@ -145,7 +145,7 @@ class Speaker:
             y2 = y1
             y1 = y
             x2 = x1
-            x1 = voltages[:, i] # XXX does this really always lag?
+            x1 = voltages[:, i]  # XXX does this really always lag?
 
         # print(output)
         return output
@@ -161,7 +161,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # TODO: avoid temporarily doubling memory footprint to concatenate
     data = numpy.ascontiguousarray(numpy.concatenate(
         [data, numpy.zeros(max(lookahead_steps, opcodes.cycle_length(
-            opcodes.Opcode.END_OF_FRAME, is_6502)), dtype=numpy.float32)]))
+            opcodes.Opcode.END_OF_FRAME_1, is_6502)), dtype=numpy.float32)]))
 
     # Starting speaker position and applied voltage.
     # position = 0.0
@@ -173,37 +173,6 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     #
     # print(sp.evolve(0, 0, 1.0, 1.0, numpy.full((1, 10000), 1.0)) * sp.scale)
     # assert False
-
-    # all_partial_positions = {}
-    # # Precompute partial_positions so we don't skew ETA during encoding.
-    # for i in range(2048):
-    #     for voltage in [-1.0, 1.0]:
-    #         opcode_hash, _, voltages = opcodes.candidate_opcodes(
-    #             frame_horizon(i, lookahead_steps), lookahead_steps, is_6502)
-    #         print(i, voltages.shape[0])
-    #         delta_powers, partial_positions = _partial_positions(
-    #             voltage * voltages, step)
-    #
-    #         # These matrices usually have more rows than columns, so store
-    #         # then in column-major order which optimizes for this.
-    #         delta_powers = numpy.asfortranarray(delta_powers)
-    #         partial_positions = numpy.asfortranarray(
-    #             partial_positions)
-    #
-    #         all_partial_positions[opcode_hash, voltage] = (
-    #             delta_powers, partial_positions)
-    #
-    # opcode_partial_positions = {}
-    # all_opcodes = opcodes.Opcode.__members__.values()
-    # for op in set(all_opcodes) - {opcodes.Opcode.EXIT}:
-    #     voltages = opcodes.voltage_schedule(op, is_6502)
-    #     for voltage in [-1.0, 1.0]:
-    #         delta_powers, partial_positions = _partial_positions(
-    #             voltage * voltages, step)
-    #         assert delta_powers.shape == partial_positions.shape
-    #         assert delta_powers.shape[-1] == opcodes.cycle_length(op, is_6502)
-    #         opcode_partial_positions[op, voltage] = (
-    #             delta_powers, partial_positions, voltage * voltages[-1])
 
     # XXX
     # Smoothing window N --> log_2 N bit resolution
@@ -228,16 +197,18 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     opcode_counts = collections.defaultdict(int)
 
     y1 = y2 = 0.0  # last 2 speaker positions
-    while i < int(dlen / 1):
+    min_lookahead_steps = lookahead_steps
+    while i < int(dlen / 10):
         # print(i, dlen)
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
-
         # Compute all possible opcode sequences for this frame offset
-        opcode_hash, candidate_opcodes, voltages = opcodes.candidate_opcodes(
-            frame_horizon(frame_offset, lookahead_steps), lookahead_steps,
-            is_6502)
+        opcode_hash, candidate_opcodes, voltages, lookahead_steps = \
+            opcodes.candidate_opcodes(
+                frame_horizon(frame_offset, min_lookahead_steps),
+                min_lookahead_steps, is_6502)
+        # print(frame_offset, lookahead_steps)
 
         all_positions = sp.evolve(y1, y2, voltage1, voltage2, voltage1
                                   * voltages)
@@ -255,7 +226,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         #     smoothed_window, voltage * voltages, data[i:i + lookahead_steps],
         #     lookahead_steps)
 
-        assert all_positions.shape[1] == lookahead_steps
+        # assert all_positions.shape[1] == lookahead_steps
         # Pick the opcode sequence that minimizes the total squared error
         # relative to the data waveform.  This total_error() call is where
         # about 75% of CPU time is spent.
@@ -266,7 +237,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         opcode = candidate_opcodes[opcode_idx][0]
         opcode_length = opcodes.cycle_length(opcode, is_6502)
         opcode_counts[opcode] += 1
-        toggles += opcodes.TOGGLES[opcode]
+        # toggles += opcodes.TOGGLES[opcode]
 
         # Apply this opcode to evolve the speaker position
         opcode_voltages = (voltage1 * opcodes.voltage_schedule(
@@ -284,13 +255,19 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         y1 = all_positions[0, -1]
         y2 = all_positions[0, -2]
         # print(y1, y2, all_positions[0] * sp.scale)
-        total_err += total_error(
+        new_error = total_error(
             all_positions[0] * sp.scale, data[i:i + opcode_length]).item()
+        total_err += new_error
+        if new_error > 1:
+            print(i, frame_offset, new_error)
         # print(all_positions[0] * sp.scale, data[i:i + opcode_length])
 
+        # print(frame_offset, opcode)
         for v in all_positions[0]:
             yield v * sp.scale
             # print(v * sp.scale)
+        # for v in opcode_voltages[0]:
+        #    print("  %d" % v)
 
         i += opcode_length
         frame_offset = (frame_offset + 1) % 2048
