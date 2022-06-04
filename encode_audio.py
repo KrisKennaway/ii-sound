@@ -129,7 +129,7 @@ class Speaker:
         self.b2 = b2
         # print(dt, w, d, e, c1,c2,b1,b2)
 
-        self.scale = numpy.float64(1 / 1000)  # TODO: analytic expression
+        self.scale = numpy.float64(1 / 700)  # TODO: analytic expression
 
     def evolve(self, y1, y2, voltage1, voltage2, voltages):
         output = numpy.zeros_like(voltages, dtype=numpy.float64)
@@ -198,7 +198,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     y1 = y2 = 0.0  # last 2 speaker positions
     min_lookahead_steps = lookahead_steps
-    # data = numpy.full(data.shape, -0.05)
+    # data = numpy.full(data.shape, -0.9)
 
     last_v = 1.0
     since_toggle = 0
@@ -312,7 +312,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         # if i >= 174600:
         #     print(i, frame_offset, new_error, opcode)
         # for v in all_positions[0]:
-        #     yield v * sp.scale
+        #     print(v * sp.scale)
         # print(v * sp.scale)
         # for v in opcode_voltages[0]:
         #    print("  %d" % v)
