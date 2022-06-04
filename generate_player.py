@@ -78,22 +78,48 @@ def all_opcodes(
         num_opcodes += 1
 
 
+import itertools
+
+
 def _make_end_of_frame_voltages(skip) -> numpy.ndarray:
     """Voltage sequence for end-of-frame TCP processing."""
     length = 160  # 4 + 14 * 10 + 6
-    c = numpy.full(length, 1.0, dtype=numpy.float32)
+    # Always start with a STA $C030
+    c = []  # numpy.full(length, 1.0, dtype=numpy.float32)
     voltage_high = True
     # toggles = 0
-    for i in range(0, 16):
+    for skip_cycles in itertools.cycle(skip):
+        if len(c) + skip_cycles < length:
+            c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
+        else:
+            c.extend([1.0 if voltage_high else -1.0] * (length - len(c)))
+            break
         voltage_high = not voltage_high
-        # toggles += 1
-        for j in range(3 + 10 * i + skip , min(length, 3 + 10 * (i + 1) +
-                                                       skip)):
-            c[j] = 1.0 if voltage_high else -1.0
-    return c
+        c.append(1.0 if voltage_high else -1.0)
+        # # toggles += 1
+        # for j in range(3 + 10 * i + skip , min(length, 3 + 10 * (i + 1) +
+        #                                                skip)):
+        #     c[j] = 1.0 if voltage_high else -1.0
+    return numpy.array(c[:length], dtype=numpy.float32)
+    # return c
 
-
-eof_bits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+# These are duty cycles
+eof_cycles = [
+    # (16,6),
+    # (14,6),
+    # (12,8),  # -0.15
+    # (14, 10),  # -0.10
+    # (12,10),  # -0.05
+    (4, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 6),  # 0.0
+    # (10, 8, 10, 10, 10, 8),  # 0.05
+    # (12, 10, 12, 8, 10, 10),  # 0.1
+    # (4, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 6),  # 0.15
+    # (10, 6, 12, 6),  # 0.20
+    # (10, 4),  # 0.25
+    # (14, 4, 10, 6),  # 0.30
+    # (12, 4),  # 0.35
+    # (14, 4),  # 0.40
+]
 
 
 def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
@@ -148,7 +174,7 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
             f.write("    TICK_%02x = 0x%02x\n" % (o, o))
         f.write("    EXIT = 0x%02x\n" % num_bytes)
         # f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
-        for i in eof_bits:
+        for i, _ in enumerate(eof_cycles):
             f.write("    END_OF_FRAME_%d = 0x%02x\n" % (i, num_bytes + 4 + i))
 
         f.write("\n\nVOLTAGE_SCHEDULE = {\n")
@@ -156,11 +182,11 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
             f.write(
                 "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
                 "\n" % (o, v))
-        for i in eof_bits:
+        for i, skip_cycles in enumerate(eof_cycles):
             f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
                     "dtype=numpy.float32),\n" % (i, ", ".join(
                 str(f) for f in _make_end_of_frame_voltages(
-                    i))))
+                    skip_cycles))))
         f.write("}\n")
 
         f.write("\n\nTOGGLES = {\n")
@@ -171,7 +197,7 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
         f.write("}\n")
 
         f.write("\n\nEOF_OPCODES = (\n")
-        for i in eof_bits:
+        for i in range(len(eof_cycles)):
             f.write("    Opcode.END_OF_FRAME_%d,\n" % i)
         f.write(")\n")
 

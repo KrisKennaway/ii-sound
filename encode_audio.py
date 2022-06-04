@@ -161,7 +161,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # TODO: avoid temporarily doubling memory footprint to concatenate
     data = numpy.ascontiguousarray(numpy.concatenate(
         [data, numpy.zeros(max(lookahead_steps, opcodes.cycle_length(
-            opcodes.Opcode.END_OF_FRAME_1, is_6502)), dtype=numpy.float32)]))
+            opcodes.Opcode.END_OF_FRAME_0, is_6502)), dtype=numpy.float32)]))
 
     # Starting speaker position and applied voltage.
     # position = 0.0
@@ -198,11 +198,29 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     y1 = y2 = 0.0  # last 2 speaker positions
     min_lookahead_steps = lookahead_steps
-    while i < int(dlen / 10):
+    # data = numpy.full(data.shape, -0.05)
+
+    last_v = 1.0
+    since_toggle = 0
+    import itertools
+    # opcode_seq = itertools.cycle(
+    #     (
+    #         opcodes.Opcode.TICK_13,
+    #         opcodes.Opcode.TICK_14,
+    #     )
+    # )
+    while i < dlen // 10:
+        # XXX handle end of data cleanly
         # print(i, dlen)
-        if i >= next_tick:
-            eta.print_status()
-            next_tick = int(eta.i * dlen / 1000)
+        # if i >= next_tick:
+        #     eta.print_status()
+        #     next_tick = int(eta.i * dlen / 1000)
+
+        # if frame_offset == 2047:
+        #     print("\n",i / sample_rate)
+        # if frame_horizon(frame_offset, min_lookahead_steps) != 0:
+        #     data[i:i+160] = numpy.mean(data[i:i+160])
+
         # Compute all possible opcode sequences for this frame offset
         opcode_hash, candidate_opcodes, voltages, lookahead_steps = \
             opcodes.candidate_opcodes(
@@ -230,11 +248,30 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         # Pick the opcode sequence that minimizes the total squared error
         # relative to the data waveform.  This total_error() call is where
         # about 75% of CPU time is spent.
-        opcode_idx = numpy.argmin(
-            total_error(
-                all_positions * sp.scale, data[i:i + lookahead_steps])).item()
+        # avoided = False
+        # while True:
+        errors = total_error(
+            all_positions * sp.scale, data[i:i + lookahead_steps])
+        #     if numpy.min(errors) > 1 and frame_offset == 2046:
+        #         if avoided:
+        #             print("...failed")
+        #             break
+        #         print("Avoiding click at", i, frame_offset, numpy.min(errors))
+        #         mult = 1.0
+        #         for j in range(lookahead_steps):
+        #             if j <= lookahead_steps // 2:
+        #                 mult *= 0.95
+        #             else:
+        #                 mult /= 0.95
+        #             data[i+j] = data[i+j] * mult
+        #         avoided = True
+        #     else:
+        #         break
+        opcode_idx = numpy.argmin(errors).item()
         # Next opcode
         opcode = candidate_opcodes[opcode_idx][0]
+        # opcode = opcode_seq.__next__()
+
         opcode_length = opcodes.cycle_length(opcode, is_6502)
         opcode_counts[opcode] += 1
         # toggles += opcodes.TOGGLES[opcode]
@@ -258,24 +295,39 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         new_error = total_error(
             all_positions[0] * sp.scale, data[i:i + opcode_length]).item()
         total_err += new_error
-        if new_error > 1:
-            print(i, frame_offset, new_error)
+        if frame_offset == 2047:
+            print(i / sample_rate, opcode, new_error,
+                  numpy.mean(data[i:i + opcode_length]), "<----" if new_error >
+                                                                    0.3 else "")
+        # for v in opcode_voltages[0]:
+        #     since_toggle += 1
+        #     if v != last_v:
+        #         print(since_toggle)
+        #         since_toggle = 0
+        #     last_v = v
+        # print(i, opcode, numpy.mean(all_positions[0] * sp.scale))
+
         # print(all_positions[0] * sp.scale, data[i:i + opcode_length])
 
-        # print(frame_offset, opcode)
-        for v in all_positions[0]:
-            yield v * sp.scale
-            # print(v * sp.scale)
+        # if i >= 174600:
+        #     print(i, frame_offset, new_error, opcode)
+        # for v in all_positions[0]:
+        #     yield v * sp.scale
+        # print(v * sp.scale)
         # for v in opcode_voltages[0]:
         #    print("  %d" % v)
 
+        yield opcode
+
         i += opcode_length
         frame_offset = (frame_offset + 1) % 2048
+        # if i == 174720:
+        #     frame_offset = 0
 
     # Make sure we have at least 2k left in stream so player will do a
     # complete read.
-    # for _ in range(frame_offset % 2048, 2048):
-    #    yield opcodes.Opcode.EXIT
+    for _ in range(frame_offset % 2048, 2048):
+        yield opcodes.Opcode.EXIT
     eta.done()
     print("Total error %f" % total_err)
     toggles_per_sec = toggles / dlen * sample_rate
@@ -336,20 +388,24 @@ def main():
     # 16/14 as long.
     sample_rate = 1015657 if args.clock == 'pal' else 1020484  # NTSC
 
-    # with open(args.output, "wb+") as f:[d20+
-    output = numpy.array(list(audio_bytestream(
-        preprocess(args.input, sample_rate, args.normalization,
-                   args.norm_percentile), args.step_size,
-        args.lookahead_cycles, sample_rate, args.cpu == '6502')),
-        dtype=numpy.float32)
-    output_rate = 44100  # int(sample_rate / 4)
-    output = librosa.resample(output, orig_sr=sample_rate,
-                              target_sr=output_rate)
-    with sf.SoundFile(
-            args.output, "w", output_rate, channels=1, format='WAV') \
-            as f:
-        f.write(output)
-    # f.write(bytes([opcode.value]))
+    # output = numpy.array(list(audio_bytestream(
+    #     preprocess(args.input, sample_rate, args.normalization,
+    #                args.norm_percentile), args.step_size,
+    #     args.lookahead_cycles, sample_rate, args.cpu == '6502')),
+    #     dtype=numpy.float32)
+    # output_rate = 44100  # int(sample_rate / 4)
+    # output = librosa.resample(output, orig_sr=sample_rate,
+    #                           target_sr=output_rate)
+    # with sf.SoundFile(
+    #         args.output, "w", output_rate, channels=1, format='WAV') \
+    #         as f:
+    #     f.write(output)
+    with open(args.output, "wb+") as f:
+        for opcode in audio_bytestream(
+                preprocess(args.input, sample_rate, args.normalization,
+                           args.norm_percentile), args.step_size,
+                args.lookahead_cycles, sample_rate, args.cpu == '6502'):
+            f.write(bytes([opcode.value]))
 
 
 if __name__ == "__main__":
