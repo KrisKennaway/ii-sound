@@ -153,6 +153,7 @@ def _duty_cycles():
         pair = sorted(sorted(res[c], reverse=False)[0][1:], reverse=True)
         cycles.append(pair)
 
+    return [(10, 10), (12, 10), (12, 8), (14, 10), (14, 6), (14, 8)]
     return cycles
 
 
