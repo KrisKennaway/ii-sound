@@ -78,30 +78,17 @@ def all_opcodes(
         num_opcodes += 1
 
 
-import itertools
-
-
-def _make_end_of_frame_voltages(skip) -> numpy.ndarray:
+def _make_end_of_frame_voltages(cycles) -> numpy.ndarray:
     """Voltage sequence for end-of-frame TCP processing."""
-    length = 160  # 4 + 14 * 10 + 6
-    # Always start with a STA $C030
-    c = []  # numpy.full(length, 1.0, dtype=numpy.float32)
+    c = []
     voltage_high = True
-    # toggles = 0
-    for skip_cycles in itertools.cycle(skip):
-        if len(c) + skip_cycles < length:
-            c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
-        else:
-            c.extend([1.0 if voltage_high else -1.0] * (length - len(c)))
-            break
-        voltage_high = not voltage_high
+    for i, skip_cycles in enumerate(cycles):
+        c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
+        if i != len(cycles) - 1:
+            voltage_high = not voltage_high
         c.append(1.0 if voltage_high else -1.0)
-        # # toggles += 1
-        # for j in range(3 + 10 * i + skip , min(length, 3 + 10 * (i + 1) +
-        #                                                skip)):
-        #     c[j] = 1.0 if voltage_high else -1.0
-    return numpy.array(c[:length], dtype=numpy.float32)
-    # return c
+    return numpy.array(c, dtype=numpy.float32)
+
 
 # These are duty cycles
 eof_cycles = [
@@ -110,7 +97,21 @@ eof_cycles = [
     # (12,8),  # -0.15
     # (14, 10),  # -0.10
     # (12,10),  # -0.05
+    # (4, 40, 4, 40, 4, 40, 4, 6),
+    # (4, 38, 6, 38, 6, 38, 6, 6),
+    # (4, 36, 8, 36, 8, 36, 8, 6),
+    # (4, 34, 10, 34, 10, 34, 10, 6),
+    # (4, 32, 12, 32, 12, 32, 12, 6),
+    # (4, 30, 14, 30, 14, 30, 14, 6),
     (4, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 6),  # 0.0
+    (4, 11, 10, 11, 10, 11, 10, 11, 10, 11, 10, 11, 10, 11, 6),  # 0.046
+    (4, 24, 20, 24, 20, 24, 20, 6),  # 0.09
+    (4, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 6),  # 0.11
+    (4, 13, 10, 13, 10, 13, 10, 13, 10, 13, 10, 13, 10, 13, 6),  # 0.13
+    (4, 28, 20, 28, 20, 28, 20, 6),  # 0.166
+    (4, 26, 18, 26, 18, 26, 18, 6),  # 0.18
+    (4, 24, 16, 24, 16, 24, 16, 6),  # 0.2
+
     # (10, 8, 10, 10, 10, 8),  # 0.05
     # (12, 10, 12, 8, 10, 10),  # 0.1
     # (4, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 6),  # 0.15
@@ -120,6 +121,42 @@ eof_cycles = [
     # (12, 4),  # 0.35
     # (14, 4),  # 0.40
 ]
+
+
+def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
+    """Voltage sequence for end-of-frame TCP processing."""
+    max_len = 140
+    voltage_high = False
+    c = [1.0, 1.0, 1.0, -1.0]  # STA $C030
+    for i, skip_cycles in enumerate(cycles):
+        c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
+        voltage_high = not voltage_high
+        c.append(1.0 if voltage_high else -1.0)
+        if len(c) >= max_len:
+            break
+    c.extend([1.0 if voltage_high else -1.0] * 6)  # JMP (WDATA)
+    return numpy.array(c, dtype=numpy.float32)
+
+
+def _duty_cycles():
+    res = {}
+
+    for i in range(4, 50, 2):
+        for j in range(i, 50, 2):
+            if i + j < 20 or i + j > 50:
+                continue
+            duty = j / (i + j) * 2 - 1
+            res.setdefault(duty, []).append((i + j, i, j))
+
+    cycles = []
+    for c in sorted(list(res.keys())):
+        pair = sorted(sorted(res[c], reverse=False)[0][1:], reverse=True)
+        cycles.append(pair)
+
+    return cycles
+
+
+eof_cycles = _duty_cycles()
 
 
 def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
@@ -184,9 +221,9 @@ def generate_player(player_ops: List[Tuple[Opcode]], opcode_filename: str,
                 "\n" % (o, v))
         for i, skip_cycles in enumerate(eof_cycles):
             f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
-                    "dtype=numpy.float32),\n" % (i, ", ".join(
-                str(f) for f in _make_end_of_frame_voltages(
-                    skip_cycles))))
+                    "dtype=numpy.float32),  # %s\n" % (i, ", ".join(
+                str(f) for f in _make_end_of_frame_voltages2(
+                    skip_cycles)), skip_cycles))
         f.write("}\n")
 
         f.write("\n\nTOGGLES = {\n")

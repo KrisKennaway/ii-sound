@@ -111,13 +111,13 @@ def candidate_opcodes(
     lookahead_cycles, retains the first such opcode sequence.
     """
     opcodes = opcode_lookahead(frame_offset, lookahead_cycles, is_6502)
+    # opcodes = [(Opcode.TICK_07,), (Opcode.TICK_84,)]
     # Look ahead over the common cycle subsequence to make sure we see as far
     # as possible into the future
     cycles = []
     for ops in opcodes:
         op_len = sum(cycle_length(op, is_6502) for op in ops)
         cycles.append(op_len)
-    # print(cycles)
     lookahead_cycles = min(cycles)
     seen_cycles = set()
     pruned_opcodes = []

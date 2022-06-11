@@ -36,52 +36,6 @@ import opcodes
 import lookahead
 
 
-# We simulate the speaker voltage trajectory resulting from applying multiple
-# voltage profiles, compute the resulting squared error relative to the target
-# waveform, and pick the best one.
-#
-# We use numpy to vectorize the computation since it has better scaling
-# performance with more opcode choices, although also has a larger fixed
-# overhead.
-#
-# The speaker position p_i evolves according to
-# p_{i+1} = p_i + (v_i - p_i) / s
-# where v_i is the i'th applied voltage, s is the speaker step size
-#
-# Rearranging, we get p_{i+1} = v_i / s + (1-1/s) p_i
-# and if we expand the recurrence relation
-# p_{i+1} = Sum_{j=0}^i (1-1/s)^(i-j) v_j / s + (1-1/s)^(i+1) p_0
-# = (1-1/s)^(i+1)(1/s * Sum_{j=0}^i v_j / (1-1/s)^(j+1) + p0)
-#
-# We can precompute most of this expression:
-# 1) the vector {(1-1/s)^i} ("_delta_powers")
-# 2) the position-independent term of p_{i+1} ("_partial_positions").  Since
-#    the candidate opcodes list only depends on frame_offset, the voltage matrix
-#    v also only takes a few possible values, so we can precompute all values
-#    of this term.
-
-
-@functools.lru_cache(None)
-def _delta_powers(shape, step_size: int) -> numpy.ndarray:
-    delta = 1 - 1 / step_size
-    return numpy.cumprod(numpy.full(shape, delta), axis=-1)
-
-
-def _partial_positions(voltages, step_size):
-    delta_powers = _delta_powers(voltages.shape, step_size)
-
-    partial_positions = delta_powers * (
-            numpy.cumsum(voltages / delta_powers, axis=-1) / step_size)
-    return delta_powers, partial_positions
-
-
-def new_positions(
-        position: float, partial_positions: numpy.ndarray,
-        delta_powers: numpy.ndarray) -> numpy.ndarray:
-    """Computes new array of speaker positions for position and voltage data."""
-    return partial_positions + delta_powers * position
-
-
 def total_error(positions: numpy.ndarray, data: numpy.ndarray) -> numpy.ndarray:
     """Computes the total squared error for speaker position matrix vs data."""
     return numpy.sum(numpy.square(positions - data), axis=-1)
@@ -129,26 +83,19 @@ class Speaker:
         self.b2 = b2
         # print(dt, w, d, e, c1,c2,b1,b2)
 
-        self.scale = numpy.float64(1 / 700)  # TODO: analytic expression
+        # 3000 - 241
+        # 2500 - 97
+        # 2000 - 24
+        # 1700 - 9.6
+        # 1600 - 8.8
+        # 1500 - 9.39
+        # 1400 - 10.46
+        # 1000 - 21.56
 
-    def evolve(self, y1, y2, voltage1, voltage2, voltages):
-        output = numpy.zeros_like(voltages, dtype=numpy.float64)
-        x1 = numpy.full((1, voltages.shape[0]), voltage1,
-                        dtype=numpy.float32)
-        x2 = numpy.full((1, voltages.shape[0]), voltage2,
-                        dtype=numpy.float32)
-        for i in range(voltages.shape[1]):
-            # print(i)
-            y = self.c1 * y1 - self.c2 * y2 + self.b1 * x1 + self.b2 * x2
-            output[:, i] = y
-
-            y2 = y1
-            y1 = y
-            x2 = x1
-            x1 = voltages[:, i]  # XXX does this really always lag?
-
-        # print(output)
-        return output
+        # 1600 - 3603
+        # 1000 - 708
+        # 800 - 802
+        self.scale = numpy.float64(1 / 800)  # TODO: analytic expression
 
 
 def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
@@ -163,30 +110,12 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         [data, numpy.zeros(max(lookahead_steps, opcodes.cycle_length(
             opcodes.Opcode.END_OF_FRAME_0, is_6502)), dtype=numpy.float32)]))
 
-    # Starting speaker position and applied voltage.
-    # position = 0.0
-    voltage1 = voltage2 = -1.0
+    # Starting speaker applied voltage.
+    voltage1 = voltage2 = -1.0  # * 2.5
 
     toggles = 0
 
     sp = Speaker(sample_rate, freq=3875, damping=-1210)
-    #
-    # print(sp.evolve(0, 0, 1.0, 1.0, numpy.full((1, 10000), 1.0)) * sp.scale)
-    # assert False
-
-    # XXX
-    # Smoothing window N --> log_2 N bit resolution
-    # - 64
-    # Maintain last N voltages
-    # Lookahead window L
-    # Compute all opcodes for window L
-    # Compute all voltage schedules for window L
-    # Compute moving average over combined voltage schedule and minimize error
-    # XXX band pass filter first - to speaker range?  no point trying to
-    # model frequencies that can't be produced
-
-    # old method was basically an exponential moving average, another way of
-    # smoothing square waveform
 
     total_err = 0.0  # Total squared error of audio output
     frame_offset = 0  # Position in 2048-byte TCP frame
@@ -198,7 +127,9 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     y1 = y2 = 0.0  # last 2 speaker positions
     min_lookahead_steps = lookahead_steps
-    # data = numpy.full(data.shape, -0.9)
+    # data = numpy.full(data.shape, 0.0)
+    # data = numpy.sin(
+    #     numpy.arange(len(data)) * (2 * numpy.pi / (sample_rate / 3875)))
 
     last_v = 1.0
     since_toggle = 0
@@ -209,64 +140,26 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     #         opcodes.Opcode.TICK_14,
     #     )
     # )
-    while i < dlen // 10:
+    clicks = 0
+    while i < dlen // 1:
         # XXX handle end of data cleanly
-        # print(i, dlen)
         # if i >= next_tick:
         #     eta.print_status()
         #     next_tick = int(eta.i * dlen / 1000)
-
-        # if frame_offset == 2047:
-        #     print("\n",i / sample_rate)
-        # if frame_horizon(frame_offset, min_lookahead_steps) != 0:
-        #     data[i:i+160] = numpy.mean(data[i:i+160])
 
         # Compute all possible opcode sequences for this frame offset
         opcode_hash, candidate_opcodes, voltages, lookahead_steps = \
             opcodes.candidate_opcodes(
                 frame_horizon(frame_offset, min_lookahead_steps),
                 min_lookahead_steps, is_6502)
-        # print(frame_offset, lookahead_steps)
 
-        all_positions = sp.evolve(y1, y2, voltage1, voltage2, voltage1
-                                  * voltages)
-        # print(all_positions, all_positions.shape)
+        all_positions = lookahead.evolve(
+            sp, y1, y2, voltage1, voltage2, voltage1 * voltages)
 
-        # Look up the precomputed partial values for these candidate opcode
-        # sequences.
-        # delta_powers, partial_positions = all_partial_positions[opcode_hash,
-        #                                                         voltage]
-        # # Compute matrix of new speaker positions for candidate opcode
-        # # sequences.
-        # all_positions = new_positions(position, partial_positions, delta_powers)
-
-        # opcode_idx, _ = lookahead.moving_average(
-        #     smoothed_window, voltage * voltages, data[i:i + lookahead_steps],
-        #     lookahead_steps)
-
-        # assert all_positions.shape[1] == lookahead_steps
         # Pick the opcode sequence that minimizes the total squared error
-        # relative to the data waveform.  This total_error() call is where
-        # about 75% of CPU time is spent.
-        # avoided = False
-        # while True:
+        # relative to the data waveform.
         errors = total_error(
             all_positions * sp.scale, data[i:i + lookahead_steps])
-        #     if numpy.min(errors) > 1 and frame_offset == 2046:
-        #         if avoided:
-        #             print("...failed")
-        #             break
-        #         print("Avoiding click at", i, frame_offset, numpy.min(errors))
-        #         mult = 1.0
-        #         for j in range(lookahead_steps):
-        #             if j <= lookahead_steps // 2:
-        #                 mult *= 0.95
-        #             else:
-        #                 mult /= 0.95
-        #             data[i+j] = data[i+j] * mult
-        #         avoided = True
-        #     else:
-        #         break
         opcode_idx = numpy.argmin(errors).item()
         # Next opcode
         opcode = candidate_opcodes[opcode_idx][0]
@@ -279,11 +172,9 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         # Apply this opcode to evolve the speaker position
         opcode_voltages = (voltage1 * opcodes.voltage_schedule(
             opcode, is_6502)).reshape((1, -1))
-        all_positions = sp.evolve(y1, y2, voltage1, voltage2, opcode_voltages)
+        all_positions = lookahead.evolve(
+            sp, y1, y2, voltage1, voltage2, opcode_voltages)
 
-        # delta_powers, partial_positions, last_voltage = \
-        #     opcode_partial_positions[opcode, voltage]
-        # all_positions = new_positions(position, partial_positions, delta_powers)
         assert all_positions.shape[0] == 1
         assert all_positions.shape[1] == opcode_length
 
@@ -291,43 +182,28 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         voltage2 = opcode_voltages[0, -2]
         y1 = all_positions[0, -1]
         y2 = all_positions[0, -2]
-        # print(y1, y2, all_positions[0] * sp.scale)
         new_error = total_error(
             all_positions[0] * sp.scale, data[i:i + opcode_length]).item()
         total_err += new_error
-        if frame_offset == 2047:
-            print(i / sample_rate, opcode, new_error,
-                  numpy.mean(data[i:i + opcode_length]), "<----" if new_error >
-                                                                    0.3 else "")
-        # for v in opcode_voltages[0]:
-        #     since_toggle += 1
-        #     if v != last_v:
-        #         print(since_toggle)
-        #         since_toggle = 0
-        #     last_v = v
-        # print(i, opcode, numpy.mean(all_positions[0] * sp.scale))
+        if new_error > 0.3:
+            clicks += 1
+            print(frame_offset, i / sample_rate, opcode, new_error,
+                  numpy.mean(data[i:i + opcode_length]))  # , "<----" if \
+            # new_error > 0.3 else "")
 
-        # print(all_positions[0] * sp.scale, data[i:i + opcode_length])
-
-        # if i >= 174600:
-        #     print(i, frame_offset, new_error, opcode)
-        # for v in all_positions[0]:
-        #     print(v * sp.scale)
-        # print(v * sp.scale)
-        # for v in opcode_voltages[0]:
-        #    print("  %d" % v)
-
-        yield opcode
+        for v in all_positions[0]:
+            yield v * sp.scale
+        #     # print(v * sp.scale)
+        # print(frame_offset, opcode)
+        # yield opcode
 
         i += opcode_length
         frame_offset = (frame_offset + 1) % 2048
-        # if i == 174720:
-        #     frame_offset = 0
 
     # Make sure we have at least 2k left in stream so player will do a
     # complete read.
-    for _ in range(frame_offset % 2048, 2048):
-        yield opcodes.Opcode.EXIT
+    # for _ in range(frame_offset % 2048, 2048):
+    #     yield opcodes.Opcode.EXIT
     eta.done()
     print("Total error %f" % total_err)
     toggles_per_sec = toggles / dlen * sample_rate
@@ -337,6 +213,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     for v, k in sorted(list(opcode_counts.items()), key=lambda kv: kv[1],
                        reverse=True):
         print("%s: %d" % (v, k))
+    print("%d clicks" % clicks)
 
 
 def preprocess(
@@ -346,7 +223,7 @@ def preprocess(
 
     data, _ = librosa.load(filename, sr=target_sample_rate, mono=True)
 
-    max_value = numpy.percentile(data, normalization_percentile)
+    max_value = 1.0  # numpy.percentile(data, normalization_percentile)
     data /= max_value
     data *= normalize
 
@@ -362,8 +239,8 @@ def main():
                         help="Whether target machine clock speed is PAL ("
                              "1015657Hz) or NTSC (1020484)",
                         required=True)
-    # TODO: implement 6502
-    parser.add_argument("--cpu", choices=['6502', '65c02'], default='65c02',
+    # TODO: implement 6502 - JMP indirect takes 5 cycles instead of 6
+    parser.add_argument("--cpu", choices=['65c02'], default='65c02',
                         help="Target machine CPU type")
     parser.add_argument("--step_size", type=int,
                         help="Delta encoding step size")
@@ -388,24 +265,24 @@ def main():
     # 16/14 as long.
     sample_rate = 1015657 if args.clock == 'pal' else 1020484  # NTSC
 
-    # output = numpy.array(list(audio_bytestream(
-    #     preprocess(args.input, sample_rate, args.normalization,
-    #                args.norm_percentile), args.step_size,
-    #     args.lookahead_cycles, sample_rate, args.cpu == '6502')),
-    #     dtype=numpy.float32)
-    # output_rate = 44100  # int(sample_rate / 4)
-    # output = librosa.resample(output, orig_sr=sample_rate,
-    #                           target_sr=output_rate)
-    # with sf.SoundFile(
-    #         args.output, "w", output_rate, channels=1, format='WAV') \
-    #         as f:
-    #     f.write(output)
-    with open(args.output, "wb+") as f:
-        for opcode in audio_bytestream(
-                preprocess(args.input, sample_rate, args.normalization,
-                           args.norm_percentile), args.step_size,
-                args.lookahead_cycles, sample_rate, args.cpu == '6502'):
-            f.write(bytes([opcode.value]))
+    output = numpy.array(list(audio_bytestream(
+        preprocess(args.input, sample_rate, args.normalization,
+                   args.norm_percentile), args.step_size,
+        args.lookahead_cycles, sample_rate, args.cpu == '6502')),
+        dtype=numpy.float32)
+    output_rate = 44100  # int(sample_rate / 4)
+    output = librosa.resample(output, orig_sr=sample_rate,
+                              target_sr=output_rate)
+    with sf.SoundFile(
+            args.output, "w", output_rate, channels=1, format='WAV') \
+            as f:
+        f.write(output)
+    # with open(args.output, "wb+") as f:
+    #     for opcode in audio_bytestream(
+    #             preprocess(args.input, sample_rate, args.normalization,
+    #                        args.norm_percentile), args.step_size,
+    #             args.lookahead_cycles, sample_rate, args.cpu == '6502'):
+    #         f.write(bytes([opcode.value]))
 
 
 if __name__ == "__main__":
