@@ -143,9 +143,9 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     clicks = 0
     while i < dlen // 1:
         # XXX handle end of data cleanly
-        # if i >= next_tick:
-        #     eta.print_status()
-        #     next_tick = int(eta.i * dlen / 1000)
+        if i >= next_tick:
+            eta.print_status()
+            next_tick = int(eta.i * dlen / 1000)
 
         # Compute all possible opcode sequences for this frame offset
         opcode_hash, candidate_opcodes, voltages, lookahead_steps = \
@@ -195,6 +195,8 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             yield v * sp.scale
         #     # print(v * sp.scale)
         # print(frame_offset, opcode)
+        # if frame_offset == 2047:
+        #     print(opcode)
         # yield opcode
 
         i += opcode_length

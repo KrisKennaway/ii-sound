@@ -122,13 +122,15 @@ eof_cycles = [
     # (14, 4),  # 0.40
 ]
 
+import itertools
+
 
 def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
     """Voltage sequence for end-of-frame TCP processing."""
     max_len = 140
     voltage_high = False
     c = [1.0, 1.0, 1.0, -1.0]  # STA $C030
-    for i, skip_cycles in enumerate(cycles):
+    for i, skip_cycles in enumerate(itertools.cycle(cycles)):
         c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
         voltage_high = not voltage_high
         c.append(1.0 if voltage_high else -1.0)
@@ -153,7 +155,7 @@ def _duty_cycles():
         pair = sorted(sorted(res[c], reverse=False)[0][1:], reverse=True)
         cycles.append(pair)
 
-    return [(10, 10), (12, 10), (12, 8), (14, 10), (14, 6), (14, 8)]
+    # return [(10, 10), (12, 10), (12, 8), (14, 10), (14, 6), (14, 8)]
     return cycles
 
 
