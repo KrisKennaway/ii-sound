@@ -126,7 +126,6 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     opcode_counts = collections.defaultdict(int)
 
     y1 = y2 = 0.0  # last 2 speaker positions
-    min_lookahead_steps = lookahead_steps
     # data = numpy.full(data.shape, 0.0)
     # data = numpy.sin(
     #     numpy.arange(len(data)) * (2 * numpy.pi / (sample_rate / 3875)))
@@ -141,18 +140,23 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     #     )
     # )
     clicks = 0
+    min_lookahead_steps = lookahead_steps
     while i < dlen // 1:
         # XXX handle end of data cleanly
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
 
+        if frame_offset == 2047:
+            lookahead_steps = min_lookahead_steps + 140  # XXX parametrize
+        else:
+            lookahead_steps = min_lookahead_steps
+
         # Compute all possible opcode sequences for this frame offset
         opcode_hash, candidate_opcodes, voltages, lookahead_steps = \
             opcodes.candidate_opcodes(
-                frame_horizon(frame_offset, min_lookahead_steps),
-                min_lookahead_steps, is_6502)
-
+                frame_horizon(frame_offset, lookahead_steps),
+                lookahead_steps, is_6502)
         all_positions = lookahead.evolve(
             sp, y1, y2, voltage1, voltage2, voltage1 * voltages)
 
@@ -225,7 +229,7 @@ def preprocess(
 
     data, _ = librosa.load(filename, sr=target_sample_rate, mono=True)
 
-    max_value = 1.0  # numpy.percentile(data, normalization_percentile)
+    max_value = numpy.percentile(data, normalization_percentile)
     data /= max_value
     data *= normalize
 
@@ -256,7 +260,7 @@ def main():
     parser.add_argument("--normalization", default=1.0, type=float,
                         help="Overall multiplier to rescale input audio "
                              "values.")
-    parser.add_argument("--norm_percentile", default=99,
+    parser.add_argument("--norm_percentile", default=100,
                         help="Normalize to specified percentile value of input "
                              "audio")
     parser.add_argument("input", type=str, help="input audio file to convert")
