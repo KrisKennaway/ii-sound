@@ -1,118 +1,144 @@
-tick_00: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-tick_03: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-tick_06: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-tick_09: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  NOP
-tick_0a: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  JMP (WDATA)
+tick_00: ; voltages (True, True, True, True, True, True, True, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_01: ; voltages (True, True, True, True, True, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_02: ; voltages (True, True, True, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_05: ; voltages (True, True, True, False, False, False, False, True, True, True, True, True, True, True)
+    STA $C030 ; 4 cycles
+tick_08: ; voltages (True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_0b: ; voltages (True, True, True, True, True, True)
+    JMP (WDATA) ; 6 cycles
 
-tick_0d: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-tick_10: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-tick_13: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  NOP
-tick_14: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-  JMP (WDATA)
+tick_0e: ; voltages (True, True, True, True, True, True, True, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_0f: ; voltages (True, True, True, True, True, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_10: ; voltages (True, True, True, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_13: ; voltages (True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, True)
+    STA $C030 ; 4 cycles
+tick_16: ; voltages (True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_1a: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-tick_1d: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  NOP
-tick_1e: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-  STA $C030
-  JMP (WDATA)
+tick_1d: ; voltages (True, True, True, True, True, True, True, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_1e: ; voltages (True, True, True, True, True, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_1f: ; voltages (True, True, True, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_22: ; voltages (True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, True)
+    STA $C030 ; 4 cycles
+tick_25: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_27: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-  STA $C030
-  STA $C030
-  JMP (WDATA)
+tick_2d: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_2e: ; voltages (True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_2f: ; voltages (True, True, True, False, False, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_32: ; voltages (True, True, True, True, True, False, False, False, False, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_33: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-tick_36: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-tick_39: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  NOP
-tick_3a: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  NOP
-  NOP
-  JMP (WDATA)
+tick_3c: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_3d: ; voltages (True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_3e: ; voltages (True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_41: ; voltages (True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_3f: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-tick_42: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  NOP
-tick_43: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-  NOP
-  NOP
-  JMP (WDATA)
+tick_4c: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_4d: ; voltages (True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_4e: ; voltages (True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_51: ; voltages (True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_4b: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-tick_4e: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  NOP
-tick_4f: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  NOP
-  STA $C030
-  NOP
-  JMP (WDATA)
+tick_5d: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_5e: ; voltages (True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_5f: ; voltages (True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_62: ; voltages (True, True, True, True, True, True, True, False, False, False, False, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_57: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-tick_5a: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  NOP
-tick_5b: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  NOP
-  NOP
-  STA $C030
-  JMP (WDATA)
+tick_6d: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_6e: ; voltages (True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_6f: ; voltages (True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_72: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_63: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-  STA $C030
-  NOP
-  NOP
-  JMP (WDATA)
+tick_7e: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_7f: ; voltages (True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    NOP ; 2 cycles
+tick_80: ; voltages (True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, True, True, False, False, False, False, False, False, False)
+    STA $C030 ; 4 cycles
+tick_83: ; voltages (True, True, True, True, True, True, True, False, False, False, False, False, False, False, False, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_6e: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-  NOP
-  STA $C030
-  NOP
-  JMP (WDATA)
+tick_90: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_91: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_92: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_93: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_94: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_95: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_96: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_97: ; voltages (True, True, True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_98: ; voltages (True, True, True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+tick_99: ; voltages (True, True, True, True, True, True, True, True)
+    NOP ; 2 cycles
+    JMP (WDATA) ; 6 cycles
 
-tick_79: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  STA $C030
-  NOP
-  NOP
-  STA $C030
-  JMP (WDATA)
-
-tick_84: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-tick_87: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  NOP
-tick_88: ; voltages (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-  NOP
-  NOP
-  NOP
-  NOP
-  JMP (WDATA)
-
-tick_8f: ; voltages (1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  STA $C030
-  NOP
-  NOP
-  NOP
-  NOP
-  JMP (WDATA)
-
-; 153 bytes
+; 157 bytes
