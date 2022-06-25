@@ -149,44 +149,44 @@ def fast_path_trampoline(label: str) -> List[opcodes_6502.Opcode]:
 #     # (14, 4),  # 0.40
 # ]
 #
-# import itertools
+import itertools
+
+
+def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
+    """Voltage sequence for end-of-frame TCP processing."""
+    max_len = 140
+    voltage_high = False
+    c = [1.0, 1.0, 1.0, -1.0]  # STA $C030
+    for i, skip_cycles in enumerate(itertools.cycle(cycles)):
+        c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
+        voltage_high = not voltage_high
+        c.append(1.0 if voltage_high else -1.0)
+        if len(c) >= max_len:
+            break
+    c.extend([1.0 if voltage_high else -1.0] * 6)  # JMP (WDATA)
+    return numpy.array(c, dtype=numpy.float32)
 #
 #
-# def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
-#     """Voltage sequence for end-of-frame TCP processing."""
-#     max_len = 140
-#     voltage_high = False
-#     c = [1.0, 1.0, 1.0, -1.0]  # STA $C030
-#     for i, skip_cycles in enumerate(itertools.cycle(cycles)):
-#         c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
-#         voltage_high = not voltage_high
-#         c.append(1.0 if voltage_high else -1.0)
-#         if len(c) >= max_len:
-#             break
-#     c.extend([1.0 if voltage_high else -1.0] * 6)  # JMP (WDATA)
-#     return numpy.array(c, dtype=numpy.float32)
-#
-#
-# def _duty_cycles():
-#     res = {}
-#
-#     for i in range(4, 50, 2):
-#         for j in range(i, 50, 2):
-#             if i + j < 20 or i + j > 50:
-#                 continue
-#             duty = j / (i + j) * 2 - 1
-#             res.setdefault(duty, []).append((i + j, i, j))
-#
-#     cycles = []
-#     for c in sorted(list(res.keys())):
-#         pair = sorted(sorted(res[c], reverse=False)[0][1:], reverse=True)
-#         cycles.append(pair)
-#
-#     # return [(10, 10), (12, 10), (12, 8), (14, 10), (14, 6), (14, 8)]
-#     return cycles
-#
-#
-# eof_cycles = _duty_cycles()
+def _duty_cycles():
+    res = {}
+
+    for i in range(4, 50, 2):
+        for j in range(i, 50, 2):
+            if i + j < 20 or i + j > 50:
+                continue
+            duty = j / (i + j) * 2 - 1
+            res.setdefault(duty, []).append((i + j, i, j))
+
+    cycles = []
+    for c in sorted(list(res.keys())):
+        pair = sorted(sorted(res[c], reverse=False)[0][1:], reverse=True)
+        cycles.append(pair)
+
+    # return [(10, 10), (12, 10), (12, 8), (14, 10), (14, 6), (14, 8)]
+    return cycles
+
+
+eof_cycles = _duty_cycles()
 
 
 # def voltage_sequence(
@@ -225,7 +225,7 @@ def audio_opcodes() -> Iterable[opcodes_6502.Opcode]:
             yield tuple(ops)
 
     # Add a NOP sled so we can more efficiently chain together longer
-    # runs of NOPs without wasting bytes in the TCP frame chaining
+    # runs of NOPs without wasting bytes in the TCP frame by chaining
     # together JMP (WDATA)
     yield tuple(
         [nop for nop in opcodes_6502.nops(20)] + [opcodes_6502.JMP_WDATA])
@@ -239,13 +239,11 @@ def generate_player(
     num_bytes = 0
     seen_op_suffix_toggles = set()
     offset = 0
-    unique_opcodes = {}
+    unique_entrypoints = {}
     toggles = {}
     with open(player_filename, "w+") as f:
         for i, ops in enumerate(player_ops):
-            unique_entrypoints = []
             player_op = []
-
             for j, op in enumerate(ops):
                 op_suffix_toggles = opcodes_6502.toggles(ops[j:])
                 if op_suffix_toggles not in seen_op_suffix_toggles:
@@ -255,7 +253,7 @@ def generate_player(
                         opcodes_6502.Literal(
                             "tick_%02x: ; voltages %s" % (
                                 offset, op_suffix_toggles), indent=0))
-                    unique_entrypoints.append((offset, op_suffix_toggles))
+                    unique_entrypoints[offset] = op_suffix_toggles
                 player_op.append(op)
                 offset += op.bytes
 
@@ -268,34 +266,31 @@ def generate_player(
                 f.write("%s\n" % str(op))
 
             num_bytes += player_op_len
-            for op_offset, seq in unique_entrypoints:
-                unique_opcodes[op_offset] = seq
-                # toggles[op_offset] = tog
             f.write("\n")
 
-        f.write("; %d bytes\n" % num_bytes)
+        f.write("; %d entrypoints, %d bytes\n" % (
+            len(unique_entrypoints), num_bytes))
 
-    # with open(opcode_filename, "w") as f:
-    #     f.write("import enum\nimport numpy\n\n\n")
-    #     f.write("class Opcode(enum.Enum):\n")
-    #     for o in unique_opcodes.keys():
-    #         f.write("    TICK_%02x = 0x%02x\n" % (o, o))
-    #     f.write("    EXIT = 0x%02x\n" % num_bytes)
-    #     # f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
-    #     for i, _ in enumerate(eof_cycles):
-    #         f.write("    END_OF_FRAME_%d = 0x%02x\n" % (i, num_bytes + 4 + i))
-    #
-    #     f.write("\n\nVOLTAGE_SCHEDULE = {\n")
-    #     for o, v in unique_opcodes.items():
-    #         f.write(
-    #             "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
-    #             "\n" % (o, v))
-    #     for i, skip_cycles in enumerate(eof_cycles):
-    #         f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
-    #                 "dtype=numpy.float32),  # %s\n" % (i, ", ".join(
-    #             str(f) for f in _make_end_of_frame_voltages2(
-    #                 skip_cycles)), skip_cycles))
-    #     f.write("}\n")
+    with open(opcode_filename, "w") as f:
+        f.write("import enum\nimport numpy\n\n\n")
+        f.write("class Opcode(enum.Enum):\n")
+        for o in unique_entrypoints.keys():
+            f.write("    TICK_%02x = 0x%02x\n" % (o, o))
+        f.write("    EXIT = 0x%02x\n" % num_bytes)
+        # f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
+        for i, _ in enumerate(eof_cycles):
+            f.write("    END_OF_FRAME_%d = 0x%02x\n" % (i, num_bytes + 4 + i))
+        f.write("\n\nVOLTAGE_SCHEDULE = {\n")
+        for o, v in unique_entrypoints.items():
+            f.write(
+                "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
+                "\n" % (o, v))
+        for i, skip_cycles in enumerate(eof_cycles):
+            f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
+                    "dtype=numpy.float32),  # %s\n" % (i, ", ".join(
+                str(f) for f in _make_end_of_frame_voltages2(
+                    skip_cycles)), skip_cycles))
+        f.write("}\n")
     #
     #     f.write("\n\nTOGGLES = {\n")
     #     for o, v in toggles.items():
@@ -304,11 +299,10 @@ def generate_player(
     #         )
     #     f.write("}\n")
     #
-    #     f.write("\n\nEOF_OPCODES = (\n")
-    #     for i in range(len(eof_cycles)):
-    #         f.write("    Opcode.END_OF_FRAME_%d,\n" % i)
-    #     f.write(")\n")
-
+        f.write("\n\nEOF_OPCODES = (\n")
+        for i in range(len(eof_cycles)):
+            f.write("    Opcode.END_OF_FRAME_%d,\n" % i)
+        f.write(")\n")
 
 
 def main():

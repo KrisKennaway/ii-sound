@@ -1,5 +1,4 @@
-import itertools
-from typing import Iterable, List
+from typing import Iterable, Tuple
 
 
 class Opcode:
@@ -77,7 +76,6 @@ def padding(cycles):
 
 
 def nops(cycles: int) -> Iterable[Opcode]:
-    print(cycles)
     if cycles < 2:
         raise ValueError
     while cycles:
@@ -105,15 +103,15 @@ def nops(cycles: int) -> Iterable[Opcode]:
 #     return tuple(numpy.array(out, dtype=numpy.float32)), toggles
 
 
-def toggles(opcodes: Iterable[Opcode]) -> Tuple[bool]:
+def toggles(opcodes: Iterable[Opcode]) -> Tuple[float]:
     res = []
-    speaker = True
+    speaker = 1.0
     for op in opcodes:
         if not op.cycles:
             continue
         res.extend([speaker] * (op.cycles - 1))
         if op.toggle:
-            speaker = not speaker
+            speaker *= -1
         res.append(speaker)
     return tuple(res)
 
