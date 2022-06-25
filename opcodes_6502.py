@@ -105,7 +105,7 @@ def nops(cycles: int) -> Iterable[Opcode]:
 #     return tuple(numpy.array(out, dtype=numpy.float32)), toggles
 
 
-def toggles(opcodes: Iterable[Opcode]) -> List[bool]:
+def toggles(opcodes: Iterable[Opcode]) -> Tuple[bool]:
     res = []
     speaker = True
     for op in opcodes:

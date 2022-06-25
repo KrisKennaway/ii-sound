@@ -1,4 +1,3 @@
-import argparse
 import enum
 import itertools
 import numpy
@@ -204,25 +203,6 @@ def fast_path_trampoline(label: str) -> List[opcodes_6502.Opcode]:
 #             v = nv
 #             out.append(v)
 #     return tuple(numpy.array(out, dtype=numpy.float32)), toggles
-#
-#
-# def all_opcodes(
-#         max_len: int, opcodes: Iterable[Opcode], start_opcodes: Iterable[int]
-# ) -> Iterable[Tuple[Opcode]]:
-#     """Enumerate all combinations of opcodes up to max_len cycles"""
-#     num_opcodes = 0
-#     while True:
-#         found_one = False
-#         for ops in itertools.product(opcodes, repeat=num_opcodes):
-#             ops = tuple(list(ops) + [Opcode.JMP_INDIRECT])
-#             if ops[0] not in start_opcodes:
-#                 continue
-#             if sum(len(VOLTAGES[o]) for o in ops) <= max_len:
-#                 found_one = True
-#                 yield ops
-#         if not found_one:
-#             break
-#         num_opcodes += 1
 
 
 def audio_opcodes() -> Iterable[opcodes_6502.Opcode]:
@@ -330,41 +310,8 @@ def generate_player(
     #     f.write(")\n")
 
 
-# def all_opcode_combinations(
-#         max_cycles: int, opcodes: Iterable[Opcode], start_opcodes: List[int]
-# ) -> List[Tuple[Opcode]]:
-#     return sorted(
-#         list(all_opcodes(max_cycles, opcodes, start_opcodes)),
-#         key=lambda o: len(o), reverse=True)
-#
-#
-# def sort_by_opcode_count(
-#         player_opcodes: List[Tuple[Opcode]], count_opcodes: List[int]
-# ) -> List[Tuple[Opcode]]:
-#     return sorted(
-#         player_opcodes, key=lambda ops: sum(o in count_opcodes for o in ops),
-#         reverse=True)
-
 
 def main():
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--max_cycles", type=int, required=True,
-    #                     help="Maximum cycle length of player opcodes")
-    # parser.add_argument("opcodes", nargs="+",
-    #                     choices=Opcode.__members__.keys(),
-    #                     help="6502 opcodes to use when generating player "
-    #                          "opcodes")
-    # args = parser.parse_args()
-
-    # opcodes = set(Opcode.__members__[op] for op in args.opcodes)
-    # # TODO: use Opcode instead of int values
-    # non_nops = [Opcode.STA, Opcode.INC, Opcode.INCX, Opcode.STAX,
-    #             Opcode.JMP_INDIRECT]
-
-    # player_ops = sort_by_opcode_count(all_opcode_combinations(
-    #     max_cycles=args.max_cycles, opcodes=opcodes, start_opcodes=non_nops),
-    #     non_nops)
-
     player_ops = audio_opcodes()
     generate_player(
         player_ops,
