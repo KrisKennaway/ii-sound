@@ -125,7 +125,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # Keep track of how many opcodes we schedule
     opcode_counts = collections.defaultdict(int)
 
-    y1 = y2 = 0.0  # last 2 speaker positions
+    y1 = y2 = 1.0  # last 2 speaker positions
     # data = numpy.full(data.shape, 0.0)
     # data = numpy.sin(
     #     numpy.arange(len(data)) * (2 * numpy.pi / (sample_rate / 3875)))
@@ -165,6 +165,11 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         errors = total_error(
             all_positions * sp.scale, data[i:i + lookahead_steps])
         opcode_idx = numpy.argmin(errors).item()
+        # if frame_offset == 2046:
+        #     print("XXX")
+        #     print(opcode_idx)
+        #     for i, e in enumerate(errors):
+        #         print(i, e, candidate_opcodes[i])
         # Next opcode
         opcode = candidate_opcodes[opcode_idx][0]
         # opcode = opcode_seq.__next__()
@@ -195,10 +200,11 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
                   numpy.mean(data[i:i + opcode_length]))  # , "<----" if \
             # new_error > 0.3 else "")
 
+        # print(i / sample_rate, opcode)
         for v in all_positions[0]:
-            yield v * sp.scale
+            # print("  ", v * sp.scale)
+            yield (v * sp.scale).astype(numpy.float32)
         #     # print(v * sp.scale)
-        # print(frame_offset, opcode)
         # if frame_offset == 2047:
         #     print(opcode)
         # yield opcode
@@ -271,10 +277,12 @@ def main():
     # 16/14 as long.
     sample_rate = 1015657 if args.clock == 'pal' else 1020484  # NTSC
 
-    output = numpy.array(list(audio_bytestream(
-        preprocess(args.input, sample_rate, args.normalization,
-                   args.norm_percentile), args.step_size,
-        args.lookahead_cycles, sample_rate, args.cpu == '6502')),
+    input_audio = preprocess(args.input, sample_rate, args.normalization,
+                             args.norm_percentile)
+    print("Done preprocessing audio")
+    output = numpy.array(list(
+        audio_bytestream(input_audio, args.step_size, args.lookahead_cycles,
+                         sample_rate, args.cpu == '6502')),
         dtype=numpy.float32)
     output_rate = 44100  # int(sample_rate / 4)
     output = librosa.resample(output, orig_sr=sample_rate,
