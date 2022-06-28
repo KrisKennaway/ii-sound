@@ -170,20 +170,28 @@ def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
 def _duty_cycles():
     res = {}
 
-    for i in range(4, 50, 2):
-        for j in range(i, 50, 2):
-            if i + j < 20 or i + j > 50:
+    for i in range(4, 35, 1):
+        if i == 5:
+            continue
+        for j in range(i, 35, 1):
+            if j == 5:
                 continue
+            if i + j < 20 or i + j > 40:
+                 continue
             duty = j / (i + j) * 2 - 1
             res.setdefault(duty, []).append((i + j, i, j))
 
     cycles = []
     for c in sorted(list(res.keys())):
-        pair = sorted(sorted(res[c], reverse=False)[0][1:], reverse=True)
+        pair = sorted(sorted(res[c], reverse=False)[0][1:], reverse=False)
         cycles.append(pair)
+        if pair[0] != pair[1]:
+            cycles.append([pair[1], pair[0]])
+        print(c, pair)
+
 
     # return [(10, 10), (12, 10), (12, 8), (14, 10), (14, 6), (14, 8)]
-    return cycles
+    return sorted(cycles, key=lambda p: p[0] + p[1])
 
 
 eof_cycles = _duty_cycles()
@@ -209,27 +217,39 @@ def audio_opcodes() -> Iterable[opcodes_6502.Opcode]:
     # Interleave 3 x STA_C030 with 0,2,4 intervening NOP cycles
     # We don't need to worry about 6 or more cycle paddings because
     # these can always be achieved by chaining JMP (WDATA) to itself
-    for i in range(0, 6, 2):
-        for j in range(0, 6, 2):
-            ops = []
-            # don't need to worry about 0 or 2 since they are subsequences
-            ops.extend(opcodes_6502.nops(4))
-            ops.append(opcodes_6502.STA_C030)
-            if i:
-                ops.extend(opcodes_6502.nops(i))
-            ops.append(opcodes_6502.STA_C030)
-            if j:
-                ops.extend(opcodes_6502.nops(j))
-            ops.append(opcodes_6502.STA_C030)
-            ops.append(opcodes_6502.JMP_WDATA)
-            yield tuple(ops)
+    # for i in range(0, 6, 2):
+    #     for j in range(0, 6, 2):
+    #         ops = []
+    #         # don't need to worry about 0 or 2 since they are subsequences
+    #         ops.extend(opcodes_6502.nops(4))
+    #         ops.append(opcodes_6502.STA_C030)
+    #         if i:
+    #             ops.extend(opcodes_6502.nops(i))
+    #         ops.append(opcodes_6502.STA_C030)
+    #         if j:
+    #             ops.extend(opcodes_6502.nops(j))
+    #         ops.append(opcodes_6502.STA_C030)
+    #         ops.append(opcodes_6502.JMP_WDATA)
+    #         yield tuple(ops)
 
     # Add a NOP sled so we can more efficiently chain together longer
     # runs of NOPs without wasting bytes in the TCP frame by chaining
     # together JMP (WDATA)
     yield tuple(
-        [nop for nop in opcodes_6502.nops(20)] + [opcodes_6502.JMP_WDATA])
+        [nop for nop in opcodes_6502.nops(4)] + [
+            opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
 
+    yield tuple(
+        [nop for nop in opcodes_6502.nops(4)] + [
+            opcodes_6502.Opcode(3, 2, "STA zpdummy"),
+            opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
+
+    # yield tuple(
+    #     [nop for nop in opcodes_6502.nops(20)] + [opcodes_6502.JMP_WDATA])
+    #
+    # yield tuple(
+    #     [nop for nop in opcodes_6502.nops(18)] + [
+    #         opcodes_6502.Opcode(3, 2, "STA zpdummy"), opcodes_6502.JMP_WDATA])
 
 def generate_player(
         player_ops: Iterable[Tuple[opcodes_6502.Opcode]],
