@@ -21,7 +21,7 @@ from typing import Dict, List, Tuple, Iterable
 
 
 Opcode = opcodes_generated.Opcode
-TOGGLES = opcodes_generated.TOGGLES
+# TOGGLES = opcodes_generated.TOGGLES
 _VOLTAGE_SCHEDULE = opcodes_generated.VOLTAGE_SCHEDULE
 # _VOLTAGE_SCHEDULE[Opcode.END_OF_FRAME], TOGGLES[Opcode.END_OF_FRAME] = (
 #     _make_end_of_frame_voltages())
