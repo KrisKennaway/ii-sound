@@ -1,5 +1,6 @@
 import math
-import random
+import librosa
+import numpy
 import soundfile as sf
 
 
@@ -20,9 +21,9 @@ def params(freq, damping, dt):
     return c1, c2, b1, b2
 
 
-def wave(count: int):
+def wave(count: int, sample_rate):
     freq = 3875
-    dt = 1 / 44100.
+    dt = 1 / sample_rate
     damping = -1210  # -0.015167
 
     c1, c2, b1, b2 = params(freq, damping, dt)
@@ -41,14 +42,15 @@ def wave(count: int):
     # scale = 500 * math.sqrt(d * d+ w * w) * math.exp(-d * tm) / (dt * 2000)
 
     x1 = 1.0
-    th = 44100
+    th = 23  # sample_rate // 10
     switch = th
-    scale = 3  # TODO: analytic expression
+    scale = 650  # TODO: analytic expression
     maxy = 0
     for i in range(count):
         # y =  (c1 * y1 - c2 * y2 + b1 * x1 + b2 * x2) + mult2 * (
         #         1 - cc1 * y1 + cc2 * y2 - bb1 * x1 - bb2 * x2)
         y = (c1 * y1 - c2 * y2 + b1 * x1 + b2 * x2)
+        # print(i, y / scale, x1)
         x2 = x1
         if i >= switch:
             x1 = -x1
@@ -63,8 +65,14 @@ def wave(count: int):
 
 def main():
     # print(list(wave(1020400)))
-    with sf.SoundFile("out.wav", "w", samplerate=44100, channels=1) as f:
-        f.write(list(wave(441000)))
+    sample_rate = 1015657
+    output = numpy.array(list(wave(1015657, sample_rate)), dtype=numpy.float32)
+
+    output_rate = 96000  # int(sample_rate / 4)
+    output = librosa.resample(output, orig_sr=sample_rate,
+                              target_sr=output_rate)
+    with sf.SoundFile("out.wav", "w", samplerate=96000, channels=1) as f:
+        f.write(output)
 
 
 if __name__ == "__main__":
