@@ -237,7 +237,7 @@ EOF_STAGE_3_BASE = [
     opcodes_6502.Literal(
         "; IMPORTANT - from now on until we restore this below, we can't "
         "trash the Y register!"),
-    opcodes_6502.Opcode(4, 4, "LDY WADRH"),
+    opcodes_6502.Opcode(4, 3, "LDY WADRH"),
     opcodes_6502.Literal("; Update new Received Read pointer."),
     opcodes_6502.Literal(";"),
     opcodes_6502.Literal(
@@ -386,27 +386,46 @@ def generate_player(
         f.write("; %d entrypoints, %d bytes\n" % (
             len(unique_entrypoints), num_bytes))
 
-    # XXX if we're spilling the STA $C030 onto stage 2 then we can accommodate
-    # lower values for b
-    # it's only the ones where we have the STA $C030 on stage 1 that we have
-    # a lower bound of b >= 14 cycles
-
     with open(player_stage2_filename, "w+") as f:
 
-        # We bin pack each (a, b) duty cycle onto the same jump table page
-        pages_by_first_duty_cycle = {}
-        for ab, po in EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS.items():
-            pages_by_first_duty_cycle[ab[0]] = po[0]
-
         for eof_stage1_cycles in duty_cycle_first:
-            page = pages_by_first_duty_cycle[eof_stage1_cycles]
-            eof_stage2_ops = eof_trampoline_stage2(eof_stage1_cycles, page)
+            eof_stage2_ops = EOF_TRAMPOLINE_STAGE2[eof_stage1_cycles]
             if not eof_stage2_ops:
                 continue
 
             for op in eof_stage2_ops:
                 f.write("%s\n" % str(op))
             f.write("\n")
+
+        for a, b in EOF_DUTY_CYCLES:
+            # XXX compute deficit for first iteration
+            stage_3_tick_ops = itertools.cycle(
+                [opcodes_6502.STA_C030, opcodes_6502.padding(a - 4),
+                 opcodes_6502.STA_C030, opcodes_6502.padding(b - 4)]
+            )
+            stage_3_ops = [
+                opcodes_6502.Literal("eof_stage_3_%d_%d:" % (a, b), indent=0)
+            ] + list(opcodes_6502.interleave_opcodes(
+                    stage_3_tick_ops, EOF_STAGE_3_BASE))
+            for op in stage_3_ops:
+                f.write("%s\n" % str(op))
+            f.write("\n")
+
+        # We bin pack each (a, b) duty cycle onto the same jump table page
+        # XXX move
+        pages_by_first_duty_cycle = {}
+        for ab, po in EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS.items():
+            pages_by_first_duty_cycle[ab[0]] = po[0]
+
+        # XXX assemble page offset tables
+        # eof_trampoline_4_stage3_page:
+        # eof_trampoline_6_stage3_page:
+        # eof_trampoline_7_stage3_page:
+        # ; ...
+
+
+
+
 
     with open(opcode_filename, "w") as f:
         f.write("import enum\nimport numpy\n\n\n")
