@@ -1,20 +1,227 @@
-import enum
 import itertools
 import numpy
 from typing import Iterable, List, Tuple
 
 import opcodes_6502
 
-SLOW_PATH_TRAMPOLINE = [
-    opcodes_6502.Literal("eof_slow_path:", indent=0),
-    opcodes_6502.STA_C030,
-    opcodes_6502.Opcode(4, 3, "LDX WDATA"),
-    opcodes_6502.Opcode(4, 3, "STX @jmp+1"),
-    opcodes_6502.Literal("@jmp:", indent=0),
-    opcodes_6502.Opcode(6, 3, "JMP ($2000)")  # TODO: 5 cycles on 6502
-]
 
-SLOW_PATH_EOF = [
+def duty_cycle_range():
+    cycles = []
+    for i in range(4, 42):
+        if i == 5:
+            # No single-cycle instructions
+            # XXX can we use a 5-cycle instruction that touches $C030 only on
+            # last cycle?
+            continue
+        cycles.append(i)
+
+    return cycles
+
+
+def eof_trampoline_stage1(cycles):
+    ops = [
+        opcodes_6502.Literal(
+            "eof_trampoline_%d:" % cycles, indent=0
+        ),
+        opcodes_6502.STA_C030,
+    ]
+    if cycles == 4:
+        return ops + [
+            opcodes_6502.STA_C030,
+            opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
+        ]
+    if cycles == 5:
+        return None
+    if cycles == 6:
+        return ops + [
+            opcodes_6502.Opcode(2, 1, "NOP"),
+            opcodes_6502.STA_C030,
+            opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
+        ]
+    if cycles == 8:
+        return ops + [
+            opcodes_6502.Opcode(2, 1, "NOP"),
+            opcodes_6502.Opcode(2, 1, "NOP"),
+            opcodes_6502.STA_C030,
+            opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
+        ]
+    return ops + [
+        opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
+    ]
+
+
+EOF_TRAMPOLINE_STAGE1 = {
+    a: eof_trampoline_stage1(a) for a in duty_cycle_range()
+}
+
+
+def eof_trampoline_stage2(cycles) -> List[opcodes_6502.Opcode]:
+    label: List[opcodes_6502.Opcode] = [
+        opcodes_6502.Literal(
+            "eof_trampoline_%d_stage2:" % cycles, indent=0
+        )
+    ]
+
+    ops = [
+        opcodes_6502.Opcode(4, 3, "LDA WDATA"),
+        opcodes_6502.Opcode(4, 3, "STA @0+1"),
+        opcodes_6502.Literal("@0:", indent=0),
+        opcodes_6502.Opcode(
+            6, 3, "JMP (eof_trampoline_%d_stage3_page)" % cycles)
+    ]
+    if cycles < 7 or cycles == 8:
+        return label + ops
+
+    # For cycles == 7 or > 8 we need to interleave a STA $C030 into stage 2
+    # because we couldn't fit it in stage 1
+    interleave_ops = [
+        opcodes_6502.padding(cycles - 7),
+        opcodes_6502.STA_C030,
+        opcodes_6502.padding(100)
+    ]
+    return label + list(opcodes_6502.interleave_opcodes(interleave_ops, ops))
+
+
+EOF_TRAMPOLINE_STAGE2 = {
+    a: eof_trampoline_stage2(a) for a in duty_cycle_range()
+}
+
+
+def cycles_after_tick(ops: Iterable[opcodes_6502.Opcode]) -> int:
+    cycles = 0
+    ticks = 0
+    for op in ops:
+        cycles += op.cycles
+        if op.toggle:
+            cycles = 0
+            ticks += 1
+    return cycles, ticks
+
+
+STAGE1_CYCLES_AFTER_TICK = {
+    a: cycles_after_tick(EOF_TRAMPOLINE_STAGE1[a]) for a in duty_cycle_range()
+}
+
+STAGE2_CYCLES_AFTER_TICK = {
+    a: cycles_after_tick(EOF_TRAMPOLINE_STAGE2[a]) for a in duty_cycle_range()
+}
+
+
+def _duty_cycles(duty_cycles):
+    # The player sequence for periods of silence (i.e. 0-valued waveform)
+    # is a sequence of 10 cycle ticks, so we need to support maintaining
+    # this during EOF in order to avoid introducing noise during such periods.
+    res = {0.0: [(20, 10, 10)]}
+
+    for i in duty_cycles:
+        for j in duty_cycles:
+            # We only need to worry about i < j because we can effectively
+            # obtain the opposite cadence by inserting an extra half duty cycle
+            # before the EOF
+            # XXX try again removing this, we have space
+            if j <= i:
+                continue
+
+            # Limit to min 22Khz carrier
+            if (i + j) > 45:
+                continue
+
+            # When first duty cycle is small enough to fit in the stage 1
+            # trampoline, we can't fit the second duty cycle in the stage 2
+            # trampoline because we'd need too may stage 1 variants to fit in
+            # page 3.  That sets a lower bound on the second duty cycle.
+            #
+            # e.g.
+            #
+            # eof_trampoline_4:
+            #     STA $C030 ; 4 cycles
+            #     STA $C030 ; 4 cycles
+            #     JMP eof_trampoline_4_stage2 ; 3 cycles
+            #
+            # eof_trampoline_4_stage2:
+            #     LDA WDATA ; 4
+            #     STA @0+1 ; 4
+            # @0: JMP (xxyy) ; 6
+            #
+            # eof_trampoline_4_b_stage3:
+            #     ; second duty cycle must land here, i.e the earliest it can
+            #     ; be is 3 + 4 + 4 + 6 + 4 = 21 cycles
+            if i in {4, 6, 8}:
+                if j < 21:
+                    continue
+            else:
+                # stage 1 is STA $C030; JMP stage_2
+                stage_1_cycles, stage_1_ticks = STAGE1_CYCLES_AFTER_TICK[i]
+                assert (stage_1_cycles, stage_1_ticks) == (3, 1)
+
+                stage_2_cycles, stage_2_ticks = STAGE2_CYCLES_AFTER_TICK[i]
+                # the earliest the second duty cycle can complete is a
+                # STA $c030 at the beginning of stage 3
+                if stage_2_ticks:
+                    min_cycles = stage_2_cycles + 4
+                else:
+                    min_cycles = stage_1_cycles + stage_2_cycles + 4
+
+                if j < min_cycles:
+                    continue
+
+            duty = j / (i + j) * 2 - 1
+            res.setdefault(duty, []).append((i + j, i, j))
+
+    cycles = []
+    for c in sorted(list(res.keys())):
+        pair = sorted(res[c], reverse=False)[0][1:]
+        cycles.append(pair)
+        print(c, pair)
+
+    print(len(cycles))
+
+    return sorted(cycles, key=lambda p: p[0] + p[1])
+
+
+EOF_DUTY_CYCLES = _duty_cycles(duty_cycle_range())
+
+
+def eof_trampoline_stage3_page_offsets(duty_cycles):
+    second_cycles = {}
+    for a, b in sorted(duty_cycles):
+        second_cycles.setdefault(a, []).append(b)
+
+    # bin-pack the (a, b) duty cycles into pages so we can set up indirect
+    # jump tables to dispatch the third stage trampoline.  A greedy algorithm
+    # works fine here
+    pages = []
+    page = []
+    longest_first_cycles = sorted(
+        list(second_cycles.items()), key=lambda c: len(c[1]), reverse=True)
+    left = len(longest_first_cycles)
+    while left:
+        for i, cycles in enumerate(longest_first_cycles):
+            if cycles is None:
+                continue
+            cycle1, cycles2 = cycles
+            if len(page) < (128 - len(cycles2)):
+                page.extend((cycle1, cycle2) for cycle2 in cycles2)
+                longest_first_cycles[i] = None
+                left -= 1
+        pages.append(page)
+        page = []
+
+    page_offsets = {}
+    for page_idx, page in enumerate(pages):
+        offset = 0
+        for a, b in page:
+            offset += 2
+            page_offsets[(a, b)] = (page_idx, offset)
+
+    return page_offsets
+
+
+EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS = eof_trampoline_stage3_page_offsets(
+    EOF_DUTY_CYCLES)
+print(EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS)
+
+EOF_STAGE_3_BASE = [
     opcodes_6502.Literal(
         "; We've read exactly 2KB from the socket buffer.  Before continuing "
         "we need to ACK this read,"),
@@ -92,65 +299,6 @@ SLOW_PATH_EOF = [
     opcodes_6502.Opcode(6, 3, "JMP (WDATA)"),
 ]
 
-# Fast path really only requires 1 byte but we have to burn an extra one to
-# sync up to 2KB boundary
-FAST_PATH_EOF = [opcodes_6502.Opcode(4, 3, "LDA WDATA")] + SLOW_PATH_EOF
-
-
-def fast_path_trampoline(label: str) -> List[opcodes_6502.Opcode]:
-    return [
-        opcodes_6502.Literal("eof_fast_path_%s:", indent=0),
-        opcodes_6502.STA_C030,
-        opcodes_6502.Opcode(3, 3, "JMP _eof_fast_path_%s" % label)
-    ]
-
-
-# def _make_end_of_frame_voltages(cycles) -> numpy.ndarray:
-#     """Voltage sequence for end-of-frame TCP processing."""
-#     c = []
-#     voltage_high = True
-#     for i, skip_cycles in enumerate(cycles):
-#         c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
-#         if i != len(cycles) - 1:
-#             voltage_high = not voltage_high
-#         c.append(1.0 if voltage_high else -1.0)
-#     return numpy.array(c, dtype=numpy.float32)
-
-#
-# # These are duty cycles
-# eof_cycles = [
-#     # (16,6),
-#     # (14,6),
-#     # (12,8),  # -0.15
-#     # (14, 10),  # -0.10
-#     # (12,10),  # -0.05
-#     # (4, 40, 4, 40, 4, 40, 4, 6),
-#     # (4, 38, 6, 38, 6, 38, 6, 6),
-#     # (4, 36, 8, 36, 8, 36, 8, 6),
-#     # (4, 34, 10, 34, 10, 34, 10, 6),
-#     # (4, 32, 12, 32, 12, 32, 12, 6),
-#     # (4, 30, 14, 30, 14, 30, 14, 6),
-#     (4, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 6),  # 0.0
-#     (4, 11, 10, 11, 10, 11, 10, 11, 10, 11, 10, 11, 10, 11, 6),  # 0.046
-#     (4, 24, 20, 24, 20, 24, 20, 6),  # 0.09
-#     (4, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 6),  # 0.11
-#     (4, 13, 10, 13, 10, 13, 10, 13, 10, 13, 10, 13, 10, 13, 6),  # 0.13
-#     (4, 28, 20, 28, 20, 28, 20, 6),  # 0.166
-#     (4, 26, 18, 26, 18, 26, 18, 6),  # 0.18
-#     (4, 24, 16, 24, 16, 24, 16, 6),  # 0.2
-#
-#     # (10, 8, 10, 10, 10, 8),  # 0.05
-#     # (12, 10, 12, 8, 10, 10),  # 0.1
-#     # (4, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 6),  # 0.15
-#     # (10, 6, 12, 6),  # 0.20
-#     # (10, 4),  # 0.25
-#     # (14, 4, 10, 6),  # 0.30
-#     # (12, 4),  # 0.35
-#     # (14, 4),  # 0.40
-# ]
-#
-import itertools
-
 
 def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
     """Voltage sequence for end-of-frame TCP processing."""
@@ -167,131 +315,13 @@ def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
     return numpy.array(c, dtype=numpy.float32)
 
 
-def _duty_cycles():
-    # The player sequence for periods of silence (i.e. 0-valued waveform)
-    # is a sequence of 10 cycle ticks, so we need to support maintaining
-    # this during EOF in order to avoid introducing noise during such periods.
-    res = {0.0: [(20, 10, 10)]}
-
-    for i in range(4, 42, 1):
-        if i == 5:
-            continue
-        for j in range(i, 42, 1):
-            # if j == 5:
-            #     continue
-            if j < i:
-                continue
-            # When first duty cycle is small enough to fit in the stage 1
-            # trampoline, we can't fit the second duty cycle in the stage 2
-            # trampoline because we'd need too may variants.
-            #
-            # e.g.
-            #
-            # eof_trampoline_4:
-            #     STA $C030 ; 4 cycles
-            #     STA $C030 ; 4 cycles
-            #     JMP eof_trampoline_4_stage2 ; 3 cycles
-            #
-            # eof_trampoline_4_stage2:
-            #     LDA WDATA ; 4
-            #     STA @0+1 ; 4
-            # @0: JMP (xxyy) ; 6
-            #
-            # eof_trampoline_4_b_stage3:
-            #     ; second duty cycle must land here
-            if i in {4, 6, 8} and j < 21:
-                continue
-
-            # XXX compute value for duty cycle 2
-
-            # Limit to min 22Khz carrier
-            if (i + j) > 45:
-                continue
-            duty = j / (i + j) * 2 - 1
-            res.setdefault(duty, []).append((i + j, i, j))
-
-    cycles = []
-    for c in sorted(list(res.keys())):
-        pair = sorted(res[c], reverse=False)[0][1:]
-        cycles.append(pair)
-        print(c, pair)
-
-    print(len(cycles))
-
-    return sorted(cycles, key=lambda p: p[0] + p[1])
-
-
-eof_cycles = _duty_cycles()
-
-
-# 1181 error
-
-# Fast EOF
-# STA $C030
-# JMP $xxxx
-# --> 6 bytes, 7 cycles, 7 cycle gap
-
-# Slow EOF
-#   STA $C030
-#   LDA WDATA
-#   STA @0+1
-# @0:
-#   JMP ($20xx)
-# 12 bytes, 18 cycles, 18 cycle gap
-
-# 2-stage jump?
-
-# STA $C030
-# NOP
-# NOP
-# STA $C030
-# JMP
-
-# 12 cycles
-# LDA #$07
-# STA $C0x4
-# JMP (WDATA) --> indirect to page 7
-
-#
-# (7, ... duty cycles)
-# aaaa:
-#   STA $C030
-#   LDA WDATA
-#   STA @0+1
-# @0:
-#   JMP $(20xx)
-# (7, 18) and up
-
-
-# (9, ... duty cycles)
-# bbbb:
-#   NOP
-#   STA $C030
-# ....
-
-
 def audio_opcodes() -> Iterable[opcodes_6502.Opcode]:
-    # Interleave 3 x STA_C030 with 0,2,4 intervening NOP cycles
-    # We don't need to worry about 6 or more cycle paddings because
-    # these can always be achieved by chaining JMP (WDATA) to itself
-    # for i in range(0, 6, 2):
-    #     for j in range(0, 6, 2):
-    #         ops = []
-    #         # don't need to worry about 0 or 2 since they are subsequences
-    #         ops.extend(opcodes_6502.nops(4))
-    #         ops.append(opcodes_6502.STA_C030)
-    #         if i:
-    #             ops.extend(opcodes_6502.nops(i))
-    #         ops.append(opcodes_6502.STA_C030)
-    #         if j:
-    #             ops.extend(opcodes_6502.nops(j))
-    #         ops.append(opcodes_6502.STA_C030)
-    #         ops.append(opcodes_6502.JMP_WDATA)
-    #         yield tuple(ops)
-
-    # Add a NOP sled so we can more efficiently chain together longer
-    # runs of NOPs without wasting bytes in the TCP frame by chaining
-    # together JMP (WDATA)
+    # These two basic sequences let us chain together STA $C030 with any number
+    # >= 10 of intervening cycles (except 11).  We don't need to explicitly
+    # include 6 or more cycles of NOP because those can be obtained by chaining
+    # together JMP (WDATA) to itself
+    #
+    # XXX support 11 cycles explicitly?
     yield tuple(
         [nop for nop in opcodes_6502.nops(4)] + [
             opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
@@ -300,146 +330,6 @@ def audio_opcodes() -> Iterable[opcodes_6502.Opcode]:
         [nop for nop in opcodes_6502.nops(4)] + [
             opcodes_6502.Opcode(3, 2, "STA zpdummy"),
             opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
-
-    # yield tuple(
-    #     [nop for nop in opcodes_6502.nops(20)] + [opcodes_6502.JMP_WDATA])
-    #
-    # yield tuple(
-    #     [nop for nop in opcodes_6502.nops(18)] + [
-    #         opcodes_6502.Opcode(3, 2, "STA zpdummy"), opcodes_6502.JMP_WDATA])
-
-
-# Fill rest of page 3 with trampoline:
-# trampoline_7:
-# STA $C030
-# JMP $aaaa ; 8 bytes each
-
-# trampoline_9:
-# STA $C030
-# JMP $bbbb
-
-# trampoline_10:
-# STA $C030
-# JMP $bbbb
-
-
-# ...
-# trampoline_33:
-# STA $C030
-# JMP $ffff
-# 8 bytes each
-
-# Can also do
-# trampoline_4:
-# STA $C030
-# STA $C030
-# JMP $1234  ; 12 bytes
-
-# trampoline_6:
-# STA $C030
-# NOP
-# STA $C030
-# JMP $2345 ; 13 bytes
-
-# trampoline_8:
-# STA $C030
-# NOP
-# NOP
-# STA $C030
-# JMP $2345 ; 14 bytes
-
-def eof_trampoline_stage1(cycles):
-    ops = [
-        opcodes_6502.Literal(
-            "eof_trampoline_%d:" % cycles, indent=0
-        ),
-        opcodes_6502.STA_C030,
-    ]
-    if cycles == 4:
-        return ops + [
-            opcodes_6502.STA_C030,
-            opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
-        ]
-    if cycles == 5:
-        return None
-    if cycles == 6:
-        return ops + [
-            opcodes_6502.Opcode(2, 1, "NOP"),
-            opcodes_6502.STA_C030,
-            opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
-        ]
-    if cycles == 8:
-        return ops + [
-            opcodes_6502.Opcode(2, 1, "NOP"),
-            opcodes_6502.Opcode(2, 1, "NOP"),
-            opcodes_6502.STA_C030,
-            opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
-        ]
-    return ops + [
-        opcodes_6502.Opcode(3, 3, "JMP eof_trampoline_%d_stage2" % cycles)
-    ]
-
-
-def eof_trampoline_stage2(cycles, trampoline_page):
-    label = [
-        opcodes_6502.Literal(
-            "eof_trampoline_%d_stage2:" % cycles, indent=0
-        )
-    ]
-
-    ops = [
-        opcodes_6502.Opcode(4, 3, "LDA WDATA"),
-        opcodes_6502.Opcode(4, 3, "STA @0+1"),
-        opcodes_6502.Literal("@0:", indent=0),
-        opcodes_6502.Opcode(
-            6, 3, "JMP (eof_trampoline_stage3_page%d)" % trampoline_page)
-    ]
-    if cycles < 7 or cycles == 8:
-        return label + ops
-
-    # For cycles == 7 or > 8 we need to interleave a STA $C030 into stage 2
-    # because we couldn't fit it in stage 1
-    interleave_ops = [
-        opcodes_6502.padding(cycles - 7),
-        opcodes_6502.STA_C030,
-        opcodes_6502.padding(100)
-    ]
-    return label + list(opcodes_6502.interleave_opcodes(interleave_ops, ops))
-
-
-def assign_eof_trampoline_stage3_pages(duty_cycles):
-    second_cycles = {}
-    for a, b in sorted(duty_cycles):
-        second_cycles.setdefault(a, []).append(b)
-
-    # bin-pack the (a, b) duty cycles into pages so we can set up indirect
-    # jump tables to dispatch the third stage trampoline.  A greedy algorithm
-    # works fine here
-    pages = []
-    page = []
-    longest_first_cycles = sorted(
-        list(second_cycles.items()), key=lambda c: len(c[1]), reverse=True)
-    left = len(longest_first_cycles)
-    while left:
-        for i, cycles in enumerate(longest_first_cycles):
-            if cycles is None:
-                continue
-            cycle1, cycles2 = cycles
-            if len(page) < (128 - len(cycles2)):
-                page.extend((cycle1, cycle2) for cycle2 in cycles2)
-                longest_first_cycles[i] = None
-                left -= 1
-        pages.append(page)
-        page = []
-
-    page_offsets = {}
-    for page_idx, page in enumerate(pages):
-        offset = 0
-        for a, b in page:
-            offset += 2
-            page_offsets[(a, b)] = (page_idx, offset)
-
-    return page_offsets
 
 
 def generate_player(
@@ -481,10 +371,9 @@ def generate_player(
             num_bytes += player_op_len
             f.write("\n")
 
-        duty_cycles = _duty_cycles()
-        duty_cycle_first = sorted(list(set(dc[0] for dc in duty_cycles)))
+        duty_cycle_first = sorted(list(set(dc[0] for dc in EOF_DUTY_CYCLES)))
         for eof_stage1_cycles in duty_cycle_first:
-            eof_stage1_ops = eof_trampoline_stage1(eof_stage1_cycles)
+            eof_stage1_ops = EOF_TRAMPOLINE_STAGE1[eof_stage1_cycles]
             if not eof_stage1_ops:
                 continue
 
@@ -503,12 +392,10 @@ def generate_player(
     # a lower bound of b >= 14 cycles
 
     with open(player_stage2_filename, "w+") as f:
-        eof_stage3_page_offsets = assign_eof_trampoline_stage3_pages(
-            duty_cycles)
 
         # We bin pack each (a, b) duty cycle onto the same jump table page
         pages_by_first_duty_cycle = {}
-        for ab, po in eof_stage3_page_offsets.items():
+        for ab, po in EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS.items():
             pages_by_first_duty_cycle[ab[0]] = po[0]
 
         for eof_stage1_cycles in duty_cycle_first:
@@ -521,11 +408,6 @@ def generate_player(
                 f.write("%s\n" % str(op))
             f.write("\n")
 
-        for a, b in duty_cycles:
-            duty_cycle_ops = itertools.chain(
-                opcodes_6502.padding(b -
-            )
-
     with open(opcode_filename, "w") as f:
         f.write("import enum\nimport numpy\n\n\n")
         f.write("class Opcode(enum.Enum):\n")
@@ -533,14 +415,15 @@ def generate_player(
             f.write("    TICK_%02x = 0x%02x\n" % (o, o))
         f.write("    EXIT = 0x%02x\n" % num_bytes)
         # f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
-        for i, _ in enumerate(eof_cycles):
-            f.write("    END_OF_FRAME_%d = 0x%02x\n" % (i, num_bytes + 4 + i))
+        for i, _ in enumerate(EOF_DUTY_CYCLES):
+            f.write(
+                "    END_OF_FRAME_%d = 0x%02x\n" % (i, num_bytes + 4 + i))
         f.write("\n\nVOLTAGE_SCHEDULE = {\n")
         for o, v in unique_entrypoints.items():
             f.write(
                 "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
                 "\n" % (o, v))
-        for i, skip_cycles in enumerate(eof_cycles):
+        for i, skip_cycles in enumerate(EOF_DUTY_CYCLES):
             f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
                     "dtype=numpy.float32),  # %s\n" % (i, ", ".join(
                 str(f) for f in _make_end_of_frame_voltages2(
@@ -555,7 +438,7 @@ def generate_player(
         #     f.write("}\n")
         #
         f.write("\n\nEOF_OPCODES = (\n")
-        for i in range(len(eof_cycles)):
+        for i in range(len(EOF_DUTY_CYCLES)):
             f.write("    Opcode.END_OF_FRAME_%d,\n" % i)
         f.write(")\n")
 
