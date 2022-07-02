@@ -5,6 +5,23 @@ from typing import Iterable, List, Tuple
 import opcodes_6502
 
 
+def audio_opcodes() -> Iterable[Tuple[opcodes_6502.Opcode]]:
+    # These two basic sequences let us chain together STA $C030 with any number
+    # >= 10 of intervening cycles (except 11).  We don't need to explicitly
+    # include 6 or more cycles of NOP because those can be obtained by chaining
+    # together JMP (WDATA) to itself
+    #
+    # XXX support 11 cycles explicitly?
+    yield tuple(
+        [nop for nop in opcodes_6502.nops(4)] + [
+            opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
+
+    yield tuple(
+        [nop for nop in opcodes_6502.nops(4)] + [
+            opcodes_6502.Opcode(3, 2, "STA zpdummy"),
+            opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
+
+
 def duty_cycle_range():
     cycles = []
     for i in range(4, 42):
@@ -172,11 +189,9 @@ def _duty_cycles(duty_cycles):
     for c in sorted(list(res.keys())):
         pair = sorted(res[c], reverse=False)[0][1:]
         cycles.append(pair)
-        print(c, pair)
+        # print(c, pair)
 
-    print(len(cycles))
-
-    return sorted(cycles, key=lambda p: p[0] + p[1])
+    return sorted(cycles)
 
 
 EOF_DUTY_CYCLES = _duty_cycles(duty_cycle_range())
@@ -315,25 +330,7 @@ def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
     return numpy.array(c, dtype=numpy.float32)
 
 
-def audio_opcodes() -> Iterable[opcodes_6502.Opcode]:
-    # These two basic sequences let us chain together STA $C030 with any number
-    # >= 10 of intervening cycles (except 11).  We don't need to explicitly
-    # include 6 or more cycles of NOP because those can be obtained by chaining
-    # together JMP (WDATA) to itself
-    #
-    # XXX support 11 cycles explicitly?
-    yield tuple(
-        [nop for nop in opcodes_6502.nops(4)] + [
-            opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
-
-    yield tuple(
-        [nop for nop in opcodes_6502.nops(4)] + [
-            opcodes_6502.Opcode(3, 2, "STA zpdummy"),
-            opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
-
-
 def generate_player(
-        player_ops: Iterable[opcodes_6502.Opcode],
         opcode_filename: str,
         player_stage1_filename: str,
         player_stage2_filename: str
@@ -344,9 +341,12 @@ def generate_player(
     unique_entrypoints = {}
     toggles = {}
 
+    # Write out page 3 operations
     with open(player_stage1_filename, "w+") as f:
-        for i, ops in enumerate(player_ops):
+        # Audio operations
+        for i, ops in enumerate(audio_opcodes()):
             player_op = []
+            # Generate unique entrypoints
             for j, op in enumerate(ops):
                 op_suffix_toggles = opcodes_6502.toggles(ops[j:])
                 if op_suffix_toggles not in seen_op_suffix_toggles:
@@ -371,7 +371,9 @@ def generate_player(
             num_bytes += player_op_len
             f.write("\n")
 
+        # stage 1 EOF trampoline operations
         duty_cycle_first = sorted(list(set(dc[0] for dc in EOF_DUTY_CYCLES)))
+        stage_1_offsets = {}
         for eof_stage1_cycles in duty_cycle_first:
             eof_stage1_ops = EOF_TRAMPOLINE_STAGE1[eof_stage1_cycles]
             if not eof_stage1_ops:
@@ -382,10 +384,12 @@ def generate_player(
             f.write("\n")
 
             num_bytes += opcodes_6502.total_bytes(eof_stage1_ops)
+            stage_1_offsets[eof_stage1_cycles] = num_bytes
 
         f.write("; %d entrypoints, %d bytes\n" % (
             len(unique_entrypoints), num_bytes))
 
+    # Write out stage 2 EOF trampoline operations
     with open(player_stage2_filename, "w+") as f:
 
         for eof_stage1_cycles in duty_cycle_first:
@@ -404,9 +408,10 @@ def generate_player(
                  opcodes_6502.STA_C030, opcodes_6502.padding(b - 4)]
             )
             stage_3_ops = [
-                opcodes_6502.Literal("eof_stage_3_%d_%d:" % (a, b), indent=0)
-            ] + list(opcodes_6502.interleave_opcodes(
-                    stage_3_tick_ops, EOF_STAGE_3_BASE))
+                              opcodes_6502.Literal(
+                                  "eof_stage_3_%d_%d:" % (a, b), indent=0)
+                          ] + list(opcodes_6502.interleave_opcodes(
+                stage_3_tick_ops, EOF_STAGE_3_BASE))
             for op in stage_3_ops:
                 f.write("%s\n" % str(op))
             f.write("\n")
@@ -423,32 +428,56 @@ def generate_player(
         # eof_trampoline_7_stage3_page:
         # ; ...
 
-
-
-
-
     with open(opcode_filename, "w") as f:
-        f.write("import enum\nimport numpy\n\n\n")
-        f.write("class Opcode(enum.Enum):\n")
+        f.write("""
+import numpy
+
+
+class PlayerOp:
+        def __init__(self, byte: int):
+            self.byte = byte
+
+
+class PlayerOps:
+""")
+
         for o in unique_entrypoints.keys():
-            f.write("    TICK_%02x = 0x%02x\n" % (o, o))
-        f.write("    EXIT = 0x%02x\n" % num_bytes)
-        # f.write("    END_OF_FRAME = 0x%02x\n" % (num_bytes + 3))
-        for i, _ in enumerate(EOF_DUTY_CYCLES):
+            f.write("    TICK_%02x = PlayerOp(0x%02x)\n" % (o, o))
+        # XXX EXIT operation
+        # f.write("    EXIT = PlayerOp(0x%02x)\n" % num_bytes)
+        f.write("\n")
+
+        eof_stage1_names = []
+        for first in duty_cycle_first:
+            eof_stage1_name = "END_OF_FRAME_%d_STAGE1" % first
+            eof_stage1_names.append(eof_stage1_name)
             f.write(
-                "    END_OF_FRAME_%d = 0x%02x\n" % (i, num_bytes + 4 + i))
-        f.write("\n\nVOLTAGE_SCHEDULE = {\n")
-        for o, v in unique_entrypoints.items():
+                "    %s = PlayerOp(0x%02x)\n" % (
+                    eof_stage1_name, stage_1_offsets[first]))
+        f.write("\n")
+
+        eof_stage2_names = []
+        for first, second in EOF_DUTY_CYCLES:
+            eof_stage2_name = "END_OF_FRAME_%d_%d_STAGE2_3" % (first, second)
+            eof_stage2_names.append(eof_stage2_name)
             f.write(
-                "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
-                "\n" % (o, v))
-        for i, skip_cycles in enumerate(EOF_DUTY_CYCLES):
-            f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
-                    "dtype=numpy.float32),  # %s\n" % (i, ", ".join(
-                str(f) for f in _make_end_of_frame_voltages2(
-                    skip_cycles)), skip_cycles))
-        f.write("}\n")
-        #
+                "    %s = PlayerOp(0x%02x)\n" % (eof_stage2_name,
+                                                 EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS[
+                                                     first, second][1]))
+        f.write("\n")
+
+        # f.write("\n\nVOLTAGE_SCHEDULE = {\n")
+        # for o, v in unique_entrypoints.items():
+        #     f.write(
+        #         "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
+        #         "\n" % (o, v))
+        # for i, skip_cycles in enumerate(EOF_DUTY_CYCLES):
+        #     f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
+        #             "dtype=numpy.float32),  # %s\n" % (i, ", ".join(
+        #         str(f) for f in _make_end_of_frame_voltages2(
+        #             skip_cycles)), skip_cycles))
+        # f.write("}\n")
+
         #     f.write("\n\nTOGGLES = {\n")
         #     for o, v in toggles.items():
         #         f.write(
@@ -456,16 +485,19 @@ def generate_player(
         #         )
         #     f.write("}\n")
         #
-        f.write("\n\nEOF_OPCODES = (\n")
-        for i in range(len(EOF_DUTY_CYCLES)):
-            f.write("    Opcode.END_OF_FRAME_%d,\n" % i)
+        f.write("\nEOF_STAGE_1_OPS = (\n")
+        for n in eof_stage1_names:
+            f.write("    PlayerOps.%s,\n" % n)
+        f.write(")\n")
+
+        f.write("\n\nEOF_STAGE_2_3_OPS = (\n")
+        for n in eof_stage2_names:
+            f.write("    PlayerOps.%s,\n" % n)
         f.write(")\n")
 
 
 def main():
-    player_ops = audio_opcodes()
     generate_player(
-        player_ops,
         opcode_filename="opcodes_generated.py",
         player_stage1_filename="player/player_generated.s",
         player_stage2_filename="player/player_stage2_generated.s"

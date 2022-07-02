@@ -4,6 +4,8 @@ import opcodes_generated
 import numpy
 from typing import Dict, List, Tuple, Iterable
 
+
+
 #
 # def _make_end_of_frame_voltages(bits) -> numpy.ndarray:
 #     """Voltage sequence for end-of-frame TCP processing."""
@@ -23,6 +25,8 @@ from typing import Dict, List, Tuple, Iterable
 Opcode = opcodes_generated.Opcode
 # TOGGLES = opcodes_generated.TOGGLES
 _VOLTAGE_SCHEDULE = opcodes_generated.VOLTAGE_SCHEDULE
+
+
 # _VOLTAGE_SCHEDULE[Opcode.END_OF_FRAME], TOGGLES[Opcode.END_OF_FRAME] = (
 #     _make_end_of_frame_voltages())
 
