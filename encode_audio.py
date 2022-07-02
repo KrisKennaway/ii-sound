@@ -133,14 +133,13 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     clicks = 0
     min_lookahead_steps = lookahead_steps
-    while i < dlen // 20:
+    while i < dlen // 1:
         # XXX handle end of data cleanly
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
 
-        # XXX
-        if frame_offset >= 2045:  # XXX
+        if frame_offset >= 2043:  # XXX
             lookahead_steps = min_lookahead_steps + 120  # XXX parametrize
         else:
             lookahead_steps = min_lookahead_steps
@@ -150,14 +149,15 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             opcodes.candidate_opcodes(
                 frame_horizon(frame_offset, lookahead_steps),
                 lookahead_steps, opcode if frame_offset == 2047 else None)
-        all_positions = lookahead.evolve(
-            sp, y1, y2, voltage1, voltage2, voltage1 * voltages)
+        opcode_idx = lookahead.evolve_return_best(
+            sp, y1, y2, voltage1, voltage2, voltage1 * voltages,
+            data[i:i+lookahead_steps])
 
         # Pick the opcode sequence that minimizes the total squared error
         # relative to the data waveform.
-        errors = total_error(
-            all_positions * sp.scale, data[i:i + lookahead_steps])
-        opcode_idx = numpy.argmin(errors).item()
+        # errors = total_error(
+        #     all_positions * sp.scale, data[i:i + lookahead_steps])
+        # opcode_idx = numpy.argmin(errors).item()
         # if frame_offset == 2046:
         #     print("XXX", lookahead_steps)
         #     print(opcode_idx)
