@@ -35,6 +35,8 @@ import opcodes
 
 import lookahead
 
+import opcodes_generated
+
 
 def total_error(positions: numpy.ndarray, data: numpy.ndarray) -> numpy.ndarray:
     """Computes the total squared error for speaker position matrix vs data."""
@@ -99,7 +101,7 @@ class Speaker:
 
 
 def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
-                     sample_rate: int, is_6502: bool):
+                     sample_rate: int):
     """Computes optimal sequence of player opcodes to reproduce audio data."""
 
     dlen = len(data)
@@ -108,7 +110,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # TODO: avoid temporarily doubling memory footprint to concatenate
     data = numpy.ascontiguousarray(numpy.concatenate(
         [data, numpy.zeros(max(lookahead_steps, opcodes.cycle_length(
-            opcodes.Opcode.END_OF_FRAME_0, is_6502)), dtype=numpy.float32)]))
+            opcodes_generated.PlayerOps.TICK_00)), dtype=numpy.float32)]))
 
     # Starting speaker applied voltage.
     voltage1 = voltage2 = -1.0  # * 2.5
@@ -141,22 +143,23 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # )
     clicks = 0
     min_lookahead_steps = lookahead_steps
-    while i < dlen // 1:
+    while i < dlen // 10:
         # XXX handle end of data cleanly
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
 
-        if frame_offset == 2047:
-            lookahead_steps = min_lookahead_steps + 140  # XXX parametrize
+        # XXX
+        if frame_offset >= 2045:
+            lookahead_steps = min_lookahead_steps + 100  # XXX parametrize
         else:
             lookahead_steps = min_lookahead_steps
 
         # Compute all possible opcode sequences for this frame offset
-        opcode_hash, candidate_opcodes, voltages, lookahead_steps = \
+        candidate_opcodes, voltages, lookahead_steps = \
             opcodes.candidate_opcodes(
                 frame_horizon(frame_offset, lookahead_steps),
-                lookahead_steps, is_6502)
+                lookahead_steps, opcode if frame_offset == 2047 else None)
         all_positions = lookahead.evolve(
             sp, y1, y2, voltage1, voltage2, voltage1 * voltages)
 
@@ -166,7 +169,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             all_positions * sp.scale, data[i:i + lookahead_steps])
         opcode_idx = numpy.argmin(errors).item()
         # if frame_offset == 2046:
-        #     print("XXX")
+        #     print("XXX", lookahead_steps)
         #     print(opcode_idx)
         #     for i, e in enumerate(errors):
         #         print(i, e, candidate_opcodes[i])
@@ -174,13 +177,13 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         opcode = candidate_opcodes[opcode_idx][0]
         # opcode = opcode_seq.__next__()
 
-        opcode_length = opcodes.cycle_length(opcode, is_6502)
+        opcode_length = opcodes.cycle_length(opcode)
         opcode_counts[opcode] += 1
         # toggles += opcodes.TOGGLES[opcode]
 
         # Apply this opcode to evolve the speaker position
         opcode_voltages = (voltage1 * opcodes.voltage_schedule(
-            opcode, is_6502)).reshape((1, -1))
+            opcode)).reshape((1, -1))
         all_positions = lookahead.evolve(
             sp, y1, y2, voltage1, voltage2, opcode_voltages)
 
@@ -200,7 +203,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
                   numpy.mean(data[i:i + opcode_length]))  # , "<----" if \
             # new_error > 0.3 else "")
 
-        # print(i / sample_rate, opcode)
+        # print(frame_offset, i / sample_rate, opcode)
         for v in all_positions[0]:
             # print("  ", v * sp.scale)
             yield (v * sp.scale).astype(numpy.float32)
@@ -252,8 +255,6 @@ def main():
                              "1015657Hz) or NTSC (1020484)",
                         required=True)
     # TODO: implement 6502 - JMP indirect takes 5 cycles instead of 6
-    parser.add_argument("--cpu", choices=['65c02'], default='65c02',
-                        help="Target machine CPU type")
     parser.add_argument("--step_size", type=int,
                         help="Delta encoding step size")
     # TODO: if we're not looking ahead beyond the longest (non-end-of-frame)
@@ -282,7 +283,7 @@ def main():
     print("Done preprocessing audio")
     output = numpy.array(list(
         audio_bytestream(input_audio, args.step_size, args.lookahead_cycles,
-                         sample_rate, args.cpu == '6502')),
+                         sample_rate)),
         dtype=numpy.float32)
     output_rate = 44100  # int(sample_rate / 4)
     output = librosa.resample(output, orig_sr=sample_rate,

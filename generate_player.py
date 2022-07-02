@@ -134,11 +134,11 @@ def _duty_cycles(duty_cycles):
     res = {}
     for i in duty_cycles:
         for j in duty_cycles:
-            # We only need to worry about i < j because we can effectively
+            # We only need to worry about i <= j because we can effectively
             # obtain the opposite cadence by inserting an extra half duty cycle
             # before the EOF
             # XXX try again removing this, we have space
-            if j <= i:
+            if j < i:
                 continue
 
             # Limit to min 22Khz carrier
@@ -193,7 +193,7 @@ def _duty_cycles(duty_cycles):
     for c in sorted(list(res.keys())):
         pair = sorted(res[c], reverse=False)[0][1:]
         cycles.append(pair)
-        # print(c, pair)
+        print(c, pair)
 
     return sorted(cycles)
 
@@ -359,6 +359,7 @@ def generate_player(
                                 page_3_offset, op_suffix_toggles), indent=0))
                     op_name = "TICK_%02x" % page_3_offset
                     audio_player_ops[op_name] = player_op.PlayerOp(
+                        name=op_name,
                         byte=page_3_offset,
                         toggles=numpy.array(op_suffix_toggles))
                 player_ops.append(op)
@@ -382,6 +383,7 @@ def generate_player(
 
             op_name = "END_OF_FRAME_%d_STAGE1" % eof_stage1_cycles
             stage_1_ops[op_name] = player_op.PlayerOp(
+                name=op_name,
                 byte=page_3_offset,
                 toggles=numpy.array(opcodes_6502.toggles(eof_stage1_ops)))
             page_3_offset += opcodes_6502.total_bytes(eof_stage1_ops)
@@ -395,6 +397,8 @@ def generate_player(
 
         # Stage 2 EOF operations
         stage_2_3_ops: Dict[str, player_op.PlayerOp] = {}
+
+        stage_2_ops_by_stage_1_op: Dict[str, List[str]] = {}
         for eof_stage1_cycles in duty_cycle_first:
             eof_stage2_ops = EOF_TRAMPOLINE_STAGE2[eof_stage1_cycles]
             if not eof_stage2_ops:
@@ -453,13 +457,17 @@ def generate_player(
                 f.write("%s\n" % str(op))
             f.write("\n")
 
-            combined_ops = EOF_TRAMPOLINE_STAGE2[a] + stage_3_ops
-
             name = "END_OF_FRAME_%d_%d_STAGE2_3" % (a, b)
             _, offset = EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS[a, b]
+
             stage_2_3_ops[name] = player_op.PlayerOp(
+                name=name,
                 byte=offset,
-                toggles=numpy.array(opcodes_6502.toggles(combined_ops)))
+                toggles=numpy.array(opcodes_6502.join_toggles(
+                    [EOF_TRAMPOLINE_STAGE2[a], stage_3_ops]))
+            )
+            stage_2_ops_by_stage_1_op.setdefault(
+                "END_OF_FRAME_%d_STAGE1" % a, []).append(name)
 
         # We bin pack each (a, b) duty cycle onto the same jump table page
         # XXX move
@@ -491,15 +499,24 @@ def generate_player(
             f.write("    %s = player_op.%s\n" % (name, op.define_self()))
         f.write("\n")
 
+        f.write("\nAUDIO_OPS = (\n")
+        for n in audio_player_ops:
+            f.write("    PlayerOps.%s,\n" % n)
+        f.write(")\n")
+
         f.write("\nEOF_STAGE_1_OPS = (\n")
         for n in stage_1_ops:
             f.write("    PlayerOps.%s,\n" % n)
         f.write(")\n")
 
-        f.write("\n\nEOF_STAGE_2_3_OPS = (\n")
-        for n in stage_2_3_ops:
-            f.write("    PlayerOps.%s,\n" % n)
-        f.write(")\n")
+        f.write("\nEOF_STAGE_2_3_OPS = {\n")
+        for stage1_name, stage_2_3_names in stage_2_ops_by_stage_1_op.items():
+            f.write("    PlayerOps.%s: [%s],\n" % (
+                stage1_name, ", ".join("PlayerOps.%s" % n for n in sorted(
+                    stage_2_3_names))))
+        f.write("}\n")
+
+        f.write("\n")
 
         # TODO: count toggles
 
