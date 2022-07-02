@@ -129,8 +129,9 @@ def _duty_cycles(duty_cycles):
     # The player sequence for periods of silence (i.e. 0-valued waveform)
     # is a sequence of 10 cycle ticks, so we need to support maintaining
     # this during EOF in order to avoid introducing noise during such periods.
-    res = {0.0: [(20, 10, 10)]}
+    # XXX res = {0.0: [(20, 10, 10)]}
 
+    res = {}
     for i in duty_cycles:
         for j in duty_cycles:
             # We only need to worry about i < j because we can effectively
@@ -164,8 +165,10 @@ def _duty_cycles(duty_cycles):
             # eof_trampoline_4_b_stage3:
             #     ; second duty cycle must land here, i.e the earliest it can
             #     ; be is 3 + 4 + 4 + 6 + 4 = 21 cycles
+            #     ; It can't be 22 cycles though because there are no 1-cycle
+            #     ; operations
             if i in {4, 6, 8}:
-                if j < 21:
+                if j < 21 or j == 22:
                     continue
             else:
                 # stage 1 is STA $C030; JMP stage_2
@@ -180,7 +183,7 @@ def _duty_cycles(duty_cycles):
                 else:
                     min_cycles = stage_1_cycles + stage_2_cycles + 4
 
-                if j < min_cycles:
+                if j < min_cycles or j == min_cycles + 1:
                     continue
 
             duty = j / (i + j) * 2 - 1
@@ -316,6 +319,21 @@ EOF_STAGE_3_BASE = [
 ]
 
 
+def validate_stage_3_ops(op_seq, a, b):
+    toggles = opcodes_6502.join_toggles(op_seq)
+    toggle_cadence = itertools.chain([4], itertools.cycle([a, b]))
+    last = 1.0
+    expected_count = next(toggle_cadence)
+    print(op_seq, a, b)
+    for t in toggles:
+        expected_count -= 1
+        print(expected_count, t)
+        if t != last:
+            assert expected_count == 0
+            expected_count = next(toggle_cadence)
+        last = t
+
+
 def generate_player(
         opcode_filename: str,
         player_stage1_filename: str,
@@ -388,15 +406,48 @@ def generate_player(
 
         # Stage 3 EOF operations
         for a, b in EOF_DUTY_CYCLES:
-            # XXX compute deficit for first iteration
-            stage_3_tick_ops = itertools.cycle(
+            # Make sure we finish the first iteration of duty cycle
+            c1, t1 = STAGE1_CYCLES_AFTER_TICK[a]
+            c2, t2 = STAGE2_CYCLES_AFTER_TICK[a]
+
+            if t1 == 2 and t2 == 0:
+                # First duty cycle completed in stage 1
+                assert b >= (c2 + c1 + 4)
+                header = [opcodes_6502.padding(b - c2 - c1 - 4)]
+                print("Padding A %d, %d --> %s" % (a, b, header))
+
+            elif t1 == 1 and t2 == 1:
+                # First duty cycle completed in stage 2
+                # Counting down second duty cycle
+                assert b >= t2 - 4
+                header = [opcodes_6502.padding(b - c2 - 4)]
+                print(t1, c1, t2, c2)
+                print("Padding B %d, %d --> %s" % (a, b, header))
+            elif t1 == 1 and t2 == 0:
+                # First duty cycle has not yet completed
+                # Counting down first duty cycle
+                assert a >= c2 - c1 - 4
+                header = [
+                    opcodes_6502.padding(a - c1 - c2 - 4),
+                    opcodes_6502.STA_C030,
+                    opcodes_6502.padding(b - 4),
+                ]
+                print(t1, c1, t2, c2)
+                print("Padding C %d, %d --> %s" % (a, b, header))
+            else:
+                assert False
+
+            stage_3_tick_ops = itertools.chain(header, itertools.cycle(
                 [opcodes_6502.STA_C030, opcodes_6502.padding(a - 4),
                  opcodes_6502.STA_C030, opcodes_6502.padding(b - 4)]
-            )
+            ))
             stage_3_ops = [opcodes_6502.Literal("eof_stage_3_%d_%d:" % (a, b),
                                                 indent=0)] + list(
                 opcodes_6502.interleave_opcodes(stage_3_tick_ops,
                                                 EOF_STAGE_3_BASE))
+            validate_stage_3_ops(
+                [EOF_TRAMPOLINE_STAGE1[a], EOF_TRAMPOLINE_STAGE2[a],
+                 stage_3_ops], a, b)
             for op in stage_3_ops:
                 f.write("%s\n" % str(op))
             f.write("\n")

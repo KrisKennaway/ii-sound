@@ -71,6 +71,7 @@ STA_C030 = Opcode(4, 3, "STA $C030", toggle=True)
 # TODO: support 6502 cycle timings (5 cycles instead of 6)
 JMP_WDATA = Opcode(6, 3, "JMP (WDATA)")
 
+
 def padding(cycles):
     return PaddingOpcode(cycles, None, "; pad %d cycles" % cycles)
 
@@ -102,7 +103,6 @@ def nops(cycles: int) -> Iterable[Opcode]:
 #             out.append(v)
 #     return tuple(numpy.array(out, dtype=numpy.float32)), toggles
 
-
 def toggles(opcodes: Iterable[Opcode]) -> Tuple[float]:
     res = []
     speaker = 1.0
@@ -122,3 +122,18 @@ def total_bytes(opcodes: Iterable[Opcode]) -> int:
 
 def total_cycles(opcodes: Iterable[Opcode]) -> int:
     return sum(op.cycles for op in opcodes)
+
+
+import numpy
+
+
+def join_toggles(op_seq: Iterable[Iterable[Opcode]]) -> numpy.ndarray:
+    res = []
+    last_voltage = 1.0
+    for ops in op_seq:
+        op_toggles = toggles(ops)
+        res.extend(
+            numpy.array(op_toggles, dtype=numpy.float32) * last_voltage)
+        last_voltage = res[-1]
+
+    return numpy.array(res, dtype=numpy.float32)
