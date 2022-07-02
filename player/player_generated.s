@@ -94,4 +94,8 @@ eof_trampoline_22:
     STA $C030 ; 4 cycles
     JMP eof_trampoline_22_stage2 ; 3 cycles
 
-; 138 bytes
+eof_trampoline_10_10:
+    STA $C030 ; 4 cycles
+    JMP eof_stage_2_10_10 ; 3 cycles
+
+; 144 bytes

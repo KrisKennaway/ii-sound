@@ -129,16 +129,16 @@ def _duty_cycles(duty_cycles):
     # The player sequence for periods of silence (i.e. 0-valued waveform)
     # is a sequence of 10 cycle ticks, so we need to support maintaining
     # this during EOF in order to avoid introducing noise during such periods.
-    # XXX res = {0.0: [(20, 10, 10)]}
-
+    # XXX
     res = {}
+
     for i in duty_cycles:
         for j in duty_cycles:
             # We only need to worry about i <= j because we can effectively
             # obtain the opposite cadence by inserting an extra half duty cycle
             # before the EOF
             # XXX try again removing this, we have space
-            if j < i:
+            if j <= i:
                 continue
 
             # Limit to min 22Khz carrier
@@ -198,6 +198,7 @@ def _duty_cycles(duty_cycles):
     return sorted(cycles)
 
 
+# Excludes special (10,10) cycle that we hand-craft
 EOF_DUTY_CYCLES = _duty_cycles(duty_cycle_range())
 
 
@@ -334,6 +335,22 @@ def validate_stage_3_ops(op_seq, a, b):
         last = t
 
 
+EOF_STAGE1_10_10_OPS = [
+    opcodes_6502.Literal("eof_trampoline_10_10:", indent=0),
+    opcodes_6502.STA_C030,
+    opcodes_6502.Opcode(3, 3, "JMP eof_stage_2_10_10")
+]
+
+EOF_STAGE2_10_10_BASE = (
+        [
+            opcodes_6502.Literal("eof_stage_2_10_10:",
+                                 indent=0),
+            opcodes_6502.Opcode(4, 3,
+                                "LDA WDATA ; dummy read to maintain framing"),
+        ] + EOF_STAGE_3_BASE
+)
+
+
 def generate_player(
         opcode_filename: str,
         player_stage1_filename: str,
@@ -388,6 +405,19 @@ def generate_player(
                 toggles=numpy.array(opcodes_6502.toggles(eof_stage1_ops)))
             page_3_offset += opcodes_6502.total_bytes(eof_stage1_ops)
 
+        # Write special-case (10,10) duty cycle EOF stage 1 operation
+        for op in EOF_STAGE1_10_10_OPS:
+            f.write("%s\n" % str(op))
+        f.write("\n")
+
+        op_name = "END_OF_FRAME_10_10_STAGE1"
+        stage_1_ops[op_name] = player_op.PlayerOp(
+            name=op_name,
+            byte=page_3_offset,
+            toggles=numpy.array(opcodes_6502.toggles(EOF_STAGE1_10_10_OPS))
+        )
+        page_3_offset += opcodes_6502.total_bytes(EOF_STAGE1_10_10_OPS)
+
         # XXX reserve space for reset vector and EXIT
         assert page_3_offset < 256
         f.write("; %d bytes\n" % page_3_offset)
@@ -408,6 +438,25 @@ def generate_player(
                 f.write("%s\n" % str(op))
             f.write("\n")
 
+        eof_10_10_stage2_ops = list(opcodes_6502.interleave_opcodes(
+            itertools.chain(
+                [opcodes_6502.padding(3), opcodes_6502.STA_C030],
+                itertools.cycle([opcodes_6502.padding(6),
+                                 opcodes_6502.STA_C030])), EOF_STAGE2_10_10_BASE
+        ))
+        for op in eof_10_10_stage2_ops:
+            f.write("%s\n" % str(op))
+        f.write("\n")
+        op_name = "END_OF_FRAME_10_10_STAGE2"
+        stage_2_3_ops[op_name]= player_op.PlayerOp(
+                name=op_name,
+                byte=0xff,  # Dummy
+                toggles=numpy.array(opcodes_6502.toggles(eof_10_10_stage2_ops))
+            )
+        stage_2_ops_by_stage_1_op.setdefault(
+            "END_OF_FRAME_10_10_STAGE1", []).append(op_name)
+
+
         # Stage 3 EOF operations
         for a, b in EOF_DUTY_CYCLES:
             # Make sure we finish the first iteration of duty cycle
@@ -424,14 +473,14 @@ def generate_player(
             elif t1 == 1 and t2 == 1:
                 # First duty cycle completed in stage 2
                 # Counting down second duty cycle
-                assert b >= c2 - 4
+                assert b >= (c2 + 4)
                 header = [opcodes_6502.padding(b - c2 - 4)]
                 # print(t1, c1, t2, c2)
                 # print("Padding B %d, %d --> %s" % (a, b, header))
             elif t1 == 1 and t2 == 0:
                 # First duty cycle has not yet completed
                 # Counting down first duty cycle
-                assert a >= c2 - c1 - 4
+                assert a >= (c2 + c1 + 4)
                 header = [
                     opcodes_6502.padding(a - c1 - c2 - 4),
                     opcodes_6502.STA_C030,
