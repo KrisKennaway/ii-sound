@@ -324,10 +324,10 @@ def validate_stage_3_ops(op_seq, a, b):
     toggle_cadence = itertools.chain([4], itertools.cycle([a, b]))
     last = 1.0
     expected_count = next(toggle_cadence)
-    print(op_seq, a, b)
+    # print(op_seq, a, b)
     for t in toggles:
         expected_count -= 1
-        print(expected_count, t)
+        # print(expected_count, t)
         if t != last:
             assert expected_count == 0
             expected_count = next(toggle_cadence)
@@ -412,17 +412,18 @@ def generate_player(
 
             if t1 == 2 and t2 == 0:
                 # First duty cycle completed in stage 1
+                # Counting down second duty cycle
                 assert b >= (c2 + c1 + 4)
                 header = [opcodes_6502.padding(b - c2 - c1 - 4)]
-                print("Padding A %d, %d --> %s" % (a, b, header))
+                # print("Padding A %d, %d --> %s" % (a, b, header))
 
             elif t1 == 1 and t2 == 1:
                 # First duty cycle completed in stage 2
                 # Counting down second duty cycle
-                assert b >= t2 - 4
+                assert b >= c2 - 4
                 header = [opcodes_6502.padding(b - c2 - 4)]
-                print(t1, c1, t2, c2)
-                print("Padding B %d, %d --> %s" % (a, b, header))
+                # print(t1, c1, t2, c2)
+                # print("Padding B %d, %d --> %s" % (a, b, header))
             elif t1 == 1 and t2 == 0:
                 # First duty cycle has not yet completed
                 # Counting down first duty cycle
@@ -432,8 +433,8 @@ def generate_player(
                     opcodes_6502.STA_C030,
                     opcodes_6502.padding(b - 4),
                 ]
-                print(t1, c1, t2, c2)
-                print("Padding C %d, %d --> %s" % (a, b, header))
+                # print(t1, c1, t2, c2)
+                # print("Padding C %d, %d --> %s" % (a, b, header))
             else:
                 assert False
 
