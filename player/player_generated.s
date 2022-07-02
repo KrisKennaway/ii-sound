@@ -94,4 +94,4 @@ eof_trampoline_22:
     STA $C030 ; 4 cycles
     JMP eof_trampoline_22_stage2 ; 3 cycles
 
-; 7 entrypoints, 138 bytes
+; 138 bytes

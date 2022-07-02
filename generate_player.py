@@ -1,6 +1,6 @@
 import itertools
 import numpy
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Dict
 
 import opcodes_6502
 
@@ -330,50 +330,51 @@ def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
     return numpy.array(c, dtype=numpy.float32)
 
 
+import player_op
+
+
 def generate_player(
         opcode_filename: str,
         player_stage1_filename: str,
         player_stage2_filename: str
 ):
-    num_bytes = 0
-    seen_op_suffix_toggles = set()
-    offset = 0
-    unique_entrypoints = {}
     toggles = {}
 
     # Write out page 3 operations
     with open(player_stage1_filename, "w+") as f:
         # Audio operations
+        page_3_offset = 0
+        seen_op_suffix_toggles = set()
+
+        audio_player_ops: Dict[str, player_op.PlayerOp] = {}
+
         for i, ops in enumerate(audio_opcodes()):
-            player_op = []
+            player_ops = []
             # Generate unique entrypoints
             for j, op in enumerate(ops):
                 op_suffix_toggles = opcodes_6502.toggles(ops[j:])
                 if op_suffix_toggles not in seen_op_suffix_toggles:
                     # new subsequence
                     seen_op_suffix_toggles.add(op_suffix_toggles)
-                    player_op.append(
+                    player_ops.append(
                         opcodes_6502.Literal(
                             "tick_%02x: ; voltages %s" % (
-                                offset, op_suffix_toggles), indent=0))
-                    unique_entrypoints[offset] = op_suffix_toggles
-                player_op.append(op)
-                offset += op.bytes
+                                page_3_offset, op_suffix_toggles), indent=0))
+                    op_name = "TICK_%02x" % page_3_offset
+                    audio_player_ops[op_name] = player_op.PlayerOp(
+                        byte=page_3_offset,
+                        toggles=numpy.array(op_suffix_toggles))
+                player_ops.append(op)
+                page_3_offset += op.bytes
 
-            assert unique_entrypoints
-            player_op_len = opcodes_6502.total_bytes(player_op)
-            # Make sure we reserve 9 bytes for END_OF_FRAME and EXIT
-            assert (num_bytes + player_op_len) <= (256 - 9)
-
-            for op in player_op:
+            for op in player_ops:
                 f.write("%s\n" % str(op))
-
-            num_bytes += player_op_len
             f.write("\n")
 
         # stage 1 EOF trampoline operations
         duty_cycle_first = sorted(list(set(dc[0] for dc in EOF_DUTY_CYCLES)))
-        stage_1_offsets = {}
+        stage_1_ops: Dict[str, player_op.PlayerOp] = {}
+        # stage_1_offsets = {}
         for eof_stage1_cycles in duty_cycle_first:
             eof_stage1_ops = EOF_TRAMPOLINE_STAGE1[eof_stage1_cycles]
             if not eof_stage1_ops:
@@ -383,15 +384,21 @@ def generate_player(
                 f.write("%s\n" % str(op))
             f.write("\n")
 
-            num_bytes += opcodes_6502.total_bytes(eof_stage1_ops)
-            stage_1_offsets[eof_stage1_cycles] = num_bytes
+            # stage_1_offsets[eof_stage1_cycles] = page_3_offset
+            op_name = "END_OF_FRAME_%d_STAGE1" % eof_stage1_cycles
+            stage_1_ops[op_name] = player_op.PlayerOp(
+                byte=page_3_offset,
+                toggles=numpy.array(opcodes_6502.toggles(eof_stage1_ops)))
+            page_3_offset += opcodes_6502.total_bytes(eof_stage1_ops)
 
-        f.write("; %d entrypoints, %d bytes\n" % (
-            len(unique_entrypoints), num_bytes))
+        # XXX reserve space for reset vector and EXIT
+        assert page_3_offset < 256
+        f.write("; %d bytes\n" % page_3_offset)
 
     # Write out stage 2 EOF trampoline operations
     with open(player_stage2_filename, "w+") as f:
 
+        stage_2_3_ops: Dict[str, player_op.PlayerOp] = {}
         for eof_stage1_cycles in duty_cycle_first:
             eof_stage2_ops = EOF_TRAMPOLINE_STAGE2[eof_stage1_cycles]
             if not eof_stage2_ops:
@@ -407,14 +414,21 @@ def generate_player(
                 [opcodes_6502.STA_C030, opcodes_6502.padding(a - 4),
                  opcodes_6502.STA_C030, opcodes_6502.padding(b - 4)]
             )
-            stage_3_ops = [
-                              opcodes_6502.Literal(
-                                  "eof_stage_3_%d_%d:" % (a, b), indent=0)
-                          ] + list(opcodes_6502.interleave_opcodes(
-                stage_3_tick_ops, EOF_STAGE_3_BASE))
+            stage_3_ops = [opcodes_6502.Literal("eof_stage_3_%d_%d:" % (a, b),
+                                                indent=0)] + list(
+                opcodes_6502.interleave_opcodes(stage_3_tick_ops,
+                                                EOF_STAGE_3_BASE))
             for op in stage_3_ops:
                 f.write("%s\n" % str(op))
             f.write("\n")
+
+            combined_ops = EOF_TRAMPOLINE_STAGE2[a] + stage_3_ops
+
+            name = "END_OF_FRAME_%d_%d_STAGE2_3" % (a, b)
+            _, offset = EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS[a, b]
+            stage_2_3_ops[name] = player_op.PlayerOp(
+                byte=offset,
+                toggles=numpy.array(opcodes_6502.toggles(combined_ops)))
 
         # We bin pack each (a, b) duty cycle onto the same jump table page
         # XXX move
@@ -429,72 +443,38 @@ def generate_player(
         # ; ...
 
     with open(opcode_filename, "w") as f:
-        f.write("""
-import numpy
-
-
-class PlayerOp:
-        def __init__(self, byte: int):
-            self.byte = byte
+        f.write("""import numpy
+import player_op
 
 
 class PlayerOps:
 """)
 
-        for o in unique_entrypoints.keys():
-            f.write("    TICK_%02x = PlayerOp(0x%02x)\n" % (o, o))
+        for name, op in audio_player_ops.items():
+            f.write("    %s = player_op.%s\n" % (name, op.define_self()))
         # XXX EXIT operation
-        # f.write("    EXIT = PlayerOp(0x%02x)\n" % num_bytes)
+        # f.write("    EXIT = player_op.PlayerOp(0x%02x)\n" % num_bytes)
         f.write("\n")
 
-        eof_stage1_names = []
-        for first in duty_cycle_first:
-            eof_stage1_name = "END_OF_FRAME_%d_STAGE1" % first
-            eof_stage1_names.append(eof_stage1_name)
-            f.write(
-                "    %s = PlayerOp(0x%02x)\n" % (
-                    eof_stage1_name, stage_1_offsets[first]))
+        for name, op in stage_1_ops.items():
+            f.write("    %s = player_op.%s\n" % (name, op.define_self()))
         f.write("\n")
 
-        eof_stage2_names = []
-        for first, second in EOF_DUTY_CYCLES:
-            eof_stage2_name = "END_OF_FRAME_%d_%d_STAGE2_3" % (first, second)
-            eof_stage2_names.append(eof_stage2_name)
-            f.write(
-                "    %s = PlayerOp(0x%02x)\n" % (eof_stage2_name,
-                                                 EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS[
-                                                     first, second][1]))
+        for name, op in stage_2_3_ops.items():
+            f.write("    %s = player_op.%s\n" % (name, op.define_self()))
         f.write("\n")
 
-        # f.write("\n\nVOLTAGE_SCHEDULE = {\n")
-        # for o, v in unique_entrypoints.items():
-        #     f.write(
-        #         "    Opcode.TICK_%02x: numpy.array(%s, dtype=numpy.float32),"
-        #         "\n" % (o, v))
-        # for i, skip_cycles in enumerate(EOF_DUTY_CYCLES):
-        #     f.write("    Opcode.END_OF_FRAME_%d: numpy.array([%s], "
-        #             "dtype=numpy.float32),  # %s\n" % (i, ", ".join(
-        #         str(f) for f in _make_end_of_frame_voltages2(
-        #             skip_cycles)), skip_cycles))
-        # f.write("}\n")
-
-        #     f.write("\n\nTOGGLES = {\n")
-        #     for o, v in toggles.items():
-        #         f.write(
-        #             "    Opcode.TICK_%02x: %d,\n" % (o, v)
-        #         )
-        #     f.write("}\n")
-        #
         f.write("\nEOF_STAGE_1_OPS = (\n")
-        for n in eof_stage1_names:
+        for n in stage_1_ops:
             f.write("    PlayerOps.%s,\n" % n)
         f.write(")\n")
 
         f.write("\n\nEOF_STAGE_2_3_OPS = (\n")
-        for n in eof_stage2_names:
+        for n in stage_2_3_ops:
             f.write("    PlayerOps.%s,\n" % n)
         f.write(")\n")
 
+        # TODO: count toggles
 
 def main():
     generate_player(
