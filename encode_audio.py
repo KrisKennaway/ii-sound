@@ -140,32 +140,21 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             next_tick = int(eta.i * dlen / 1000)
 
         if frame_offset >= 2043:  # XXX
-            lookahead_steps = min_lookahead_steps + 120  # XXX parametrize
+            lookahead_steps = min_lookahead_steps + 130  # XXX parametrize
         else:
             lookahead_steps = min_lookahead_steps
 
         # Compute all possible opcode sequences for this frame offset
-        candidate_opcodes, voltages, lookahead_steps = \
+        next_candidate_opcodes, voltages, lookahead_steps = \
             opcodes.candidate_opcodes(
                 frame_horizon(frame_offset, lookahead_steps),
                 lookahead_steps, opcode if frame_offset == 2047 else None)
+        # print(frame_offset, voltages.shape, voltages.nbytes)
         opcode_idx = lookahead.evolve_return_best(
             sp, y1, y2, voltage1, voltage2, voltage1 * voltages,
             data[i:i+lookahead_steps])
 
-        # Pick the opcode sequence that minimizes the total squared error
-        # relative to the data waveform.
-        # errors = total_error(
-        #     all_positions * sp.scale, data[i:i + lookahead_steps])
-        # opcode_idx = numpy.argmin(errors).item()
-        # if frame_offset == 2046:
-        #     print("XXX", lookahead_steps)
-        #     print(opcode_idx)
-        #     for i, e in enumerate(errors):
-        #         print(i, e, candidate_opcodes[i])
-        # Next opcode
-        opcode = candidate_opcodes[opcode_idx][0]
-        # opcode = opcode_seq.__next__()
+        opcode = next_candidate_opcodes[opcode_idx]
 
         opcode_length = opcodes.cycle_length(opcode)
         opcode_counts[opcode] += 1
@@ -190,8 +179,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         if new_error > 0.3:
             clicks += 1
             print(frame_offset, i / sample_rate, opcode, new_error,
-                  numpy.mean(data[i:i + opcode_length]))  # , "<----" if \
-            # new_error > 0.3 else "")
+                  numpy.mean(data[i:i + opcode_length]))
 
         # print(frame_offset, i / sample_rate, opcode)
         for v in all_positions[0]:

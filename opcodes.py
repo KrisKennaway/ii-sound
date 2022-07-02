@@ -20,7 +20,7 @@ def voltage_schedule(op: player_op.PlayerOp) -> numpy.ndarray:
     return op.toggles
 
 
-@functools.lru_cache(None)
+#@functools.lru_cache(None)
 def opcode_choices(
         frame_offset: int,
         eof_stage_1_op: player_op.PlayerOp = None) -> List[player_op.PlayerOp]:
@@ -39,7 +39,7 @@ def opcode_choices(
         list(opcodes_generated.AUDIO_OPS), key=cycle_length, reverse=True)
 
 
-@functools.lru_cache(None)
+#@functools.lru_cache(None)
 def opcode_lookahead(
         frame_offset: int,
         lookahead_cycles: int,
@@ -68,7 +68,7 @@ def opcode_lookahead(
     return tuple(ops)  # TODO: fix return type
 
 
-@functools.lru_cache(None)
+#@functools.lru_cache(None)
 def cycle_lookahead(
         opcodes: Tuple[player_op.PlayerOp],
         lookahead_cycles: int) -> Tuple[float]:
@@ -89,7 +89,7 @@ def cycle_lookahead(
 def candidate_opcodes(
         frame_offset: int, lookahead_cycles: int,
         eof_stage_1_op: player_op.PlayerOp
-) -> Tuple[Tuple[Tuple[player_op.PlayerOp]], numpy.ndarray, int]:
+) -> Tuple[Tuple[player_op.PlayerOp], numpy.ndarray, int]:
     """Deduplicate a tuple of opcode sequences that are equivalent.
 
     For each opcode sequence whose effect is the same when truncated to
@@ -114,7 +114,7 @@ def candidate_opcodes(
             # print("Dropping", ops, cycles, seen_cycles[cycles])
             continue
         seen_cycles[cycles] = ops
-        pruned_opcodes.append(ops)
+        pruned_opcodes.append(ops[0])
         pruned_cycles.append(cycles)
 
     pruned_opcodes = tuple(pruned_opcodes)
