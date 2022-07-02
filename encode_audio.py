@@ -29,12 +29,11 @@ import collections
 import functools
 import librosa
 import numpy
+import soundfile as sf
 from eta import ETA
 
-import opcodes
-
 import lookahead
-
+import opcodes
 import opcodes_generated
 
 
@@ -132,26 +131,17 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # data = numpy.sin(
     #     numpy.arange(len(data)) * (2 * numpy.pi / (sample_rate / 3875)))
 
-    last_v = 1.0
-    since_toggle = 0
-    import itertools
-    # opcode_seq = itertools.cycle(
-    #     (
-    #         opcodes.Opcode.TICK_13,
-    #         opcodes.Opcode.TICK_14,
-    #     )
-    # )
     clicks = 0
     min_lookahead_steps = lookahead_steps
-    while i < dlen // 10:
+    while i < dlen // 20:
         # XXX handle end of data cleanly
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
 
         # XXX
-        if frame_offset >= 2045:
-            lookahead_steps = min_lookahead_steps + 100  # XXX parametrize
+        if frame_offset >= 2045:  # XXX
+            lookahead_steps = min_lookahead_steps + 120  # XXX parametrize
         else:
             lookahead_steps = min_lookahead_steps
 
@@ -205,7 +195,6 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
         # print(frame_offset, i / sample_rate, opcode)
         for v in all_positions[0]:
-            # print("  ", v * sp.scale)
             yield (v * sp.scale).astype(numpy.float32)
         #     # print(v * sp.scale)
         # if frame_offset == 2047:
@@ -245,9 +234,6 @@ def preprocess(
     return data
 
 
-import soundfile as sf
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--clock", choices=['pal', 'ntsc'],
@@ -270,6 +256,7 @@ def main():
     parser.add_argument("--norm_percentile", default=100,
                         help="Normalize to specified percentile value of input "
                              "audio")
+    parser.add_argument("--noise_output", type=str, help="output audio file")
     parser.add_argument("input", type=str, help="input audio file to convert")
     parser.add_argument("output", type=str, help="output audio file")
     args = parser.parse_args()
@@ -281,17 +268,28 @@ def main():
     input_audio = preprocess(args.input, sample_rate, args.normalization,
                              args.norm_percentile)
     print("Done preprocessing audio")
+
+    output_rate = 44100
+
     output = numpy.array(list(
         audio_bytestream(input_audio, args.step_size, args.lookahead_cycles,
-                         sample_rate)),
-        dtype=numpy.float32)
-    output_rate = 44100  # int(sample_rate / 4)
+                         sample_rate)), dtype=numpy.float32)
+    if args.noise_output:
+        noise = numpy.array(output - input_audio[:len(output)])
+        noise = librosa.resample(noise, orig_sr=sample_rate,
+                                 target_sr=output_rate)
+        with sf.SoundFile(
+                args.noise_output, "w", output_rate, channels=1,
+                format='WAV') as f:
+            f.write(noise)
+
     output = librosa.resample(output, orig_sr=sample_rate,
                               target_sr=output_rate)
     with sf.SoundFile(
             args.output, "w", output_rate, channels=1, format='WAV') \
             as f:
         f.write(output)
+
     # with open(args.output, "wb+") as f:
     #     for opcode in audio_bytestream(
     #             preprocess(args.input, sample_rate, args.normalization,
