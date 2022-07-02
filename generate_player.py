@@ -3,6 +3,7 @@ import numpy
 from typing import Iterable, List, Tuple, Dict
 
 import opcodes_6502
+import player_op
 
 
 def audio_opcodes() -> Iterable[Tuple[opcodes_6502.Opcode]]:
@@ -202,7 +203,7 @@ def eof_trampoline_stage3_page_offsets(duty_cycles):
     for a, b in sorted(duty_cycles):
         second_cycles.setdefault(a, []).append(b)
 
-    # bin-pack the (a, b) duty cycles into pages so we can set up indirect
+    # bin-pack the (a, b) duty cycles into pages so that we can set up indirect
     # jump tables to dispatch the third stage trampoline.  A greedy algorithm
     # works fine here
     pages = []
@@ -234,7 +235,6 @@ def eof_trampoline_stage3_page_offsets(duty_cycles):
 
 EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS = eof_trampoline_stage3_page_offsets(
     EOF_DUTY_CYCLES)
-print(EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS)
 
 EOF_STAGE_3_BASE = [
     opcodes_6502.Literal(
@@ -265,13 +265,13 @@ EOF_STAGE_3_BASE = [
     opcodes_6502.Opcode(4, 3, "STA WADRH"),
     opcodes_6502.Opcode(2, 2, "LDA #<S0RXRD"),
     opcodes_6502.Opcode(4, 3, "STA WADRL"),
-    opcodes_6502.Opcode(4, 3,
-                        "LDA RXRD ; TODO: in principle we could update RXRD outside of "
-                        "the EOF path"),
+    opcodes_6502.Opcode(
+        4, 3, "LDA RXRD ; TODO: in principle we could update RXRD outside of "
+              "the EOF path"),
     opcodes_6502.Opcode(2, 1, "CLC"),
     opcodes_6502.Opcode(2, 2, "ADC #$08"),
-    opcodes_6502.Opcode(4, 3,
-                        "STA WDATA ; Store new high byte of received read pointer"),
+    opcodes_6502.Opcode(
+        4, 3, "STA WDATA ; Store new high byte of received read pointer"),
     opcodes_6502.Opcode(4, 3, "STA RXRD ; Save for next time"),
     opcodes_6502.Literal("; Send the Receive command"),
     opcodes_6502.Opcode(2, 2, "LDA #<S0CR"),
@@ -292,9 +292,10 @@ EOF_STAGE_3_BASE = [
     opcodes_6502.Literal("@0:", indent=0),
     opcodes_6502.Opcode(4, 3, "STX WADRL"),
     opcodes_6502.Opcode(4, 3, "CMP WDATA ; High byte of received size"),
-    opcodes_6502.Opcode(2, 2,
-                        "BCS @0 ; 2 cycles in common case when there is already sufficient "
-                        "data waiting."),
+    opcodes_6502.Opcode(
+        2, 2,
+        "BCS @0 ; 2 cycles in common case when there is already sufficient "
+        "data waiting."),
     opcodes_6502.Literal(
         "; We're good to go for another frame.  Restore W5100 address pointer "
         "where we last found it, to"),
@@ -315,39 +316,17 @@ EOF_STAGE_3_BASE = [
 ]
 
 
-def _make_end_of_frame_voltages2(cycles) -> numpy.ndarray:
-    """Voltage sequence for end-of-frame TCP processing."""
-    max_len = 140
-    voltage_high = False
-    c = [1.0, 1.0, 1.0, -1.0]  # STA $C030
-    for i, skip_cycles in enumerate(itertools.cycle(cycles)):
-        c.extend([1.0 if voltage_high else -1.0] * (skip_cycles - 1))
-        voltage_high = not voltage_high
-        c.append(1.0 if voltage_high else -1.0)
-        if len(c) >= max_len:
-            break
-    c.extend([1.0 if voltage_high else -1.0] * 6)  # JMP (WDATA)
-    return numpy.array(c, dtype=numpy.float32)
-
-
-import player_op
-
-
 def generate_player(
         opcode_filename: str,
         player_stage1_filename: str,
         player_stage2_filename: str
 ):
-    toggles = {}
-
-    # Write out page 3 operations
+    # Generate assembly code for page 3 operations
     with open(player_stage1_filename, "w+") as f:
         # Audio operations
+        audio_player_ops: Dict[str, player_op.PlayerOp] = {}
         page_3_offset = 0
         seen_op_suffix_toggles = set()
-
-        audio_player_ops: Dict[str, player_op.PlayerOp] = {}
-
         for i, ops in enumerate(audio_opcodes()):
             player_ops = []
             # Generate unique entrypoints
@@ -374,7 +353,6 @@ def generate_player(
         # stage 1 EOF trampoline operations
         duty_cycle_first = sorted(list(set(dc[0] for dc in EOF_DUTY_CYCLES)))
         stage_1_ops: Dict[str, player_op.PlayerOp] = {}
-        # stage_1_offsets = {}
         for eof_stage1_cycles in duty_cycle_first:
             eof_stage1_ops = EOF_TRAMPOLINE_STAGE1[eof_stage1_cycles]
             if not eof_stage1_ops:
@@ -384,7 +362,6 @@ def generate_player(
                 f.write("%s\n" % str(op))
             f.write("\n")
 
-            # stage_1_offsets[eof_stage1_cycles] = page_3_offset
             op_name = "END_OF_FRAME_%d_STAGE1" % eof_stage1_cycles
             stage_1_ops[op_name] = player_op.PlayerOp(
                 byte=page_3_offset,
@@ -395,9 +372,10 @@ def generate_player(
         assert page_3_offset < 256
         f.write("; %d bytes\n" % page_3_offset)
 
-    # Write out stage 2 EOF trampoline operations
+    # Generate assembly code for stage 2 and 3 EOF operations
     with open(player_stage2_filename, "w+") as f:
 
+        # Stage 2 EOF operations
         stage_2_3_ops: Dict[str, player_op.PlayerOp] = {}
         for eof_stage1_cycles in duty_cycle_first:
             eof_stage2_ops = EOF_TRAMPOLINE_STAGE2[eof_stage1_cycles]
@@ -408,6 +386,7 @@ def generate_player(
                 f.write("%s\n" % str(op))
             f.write("\n")
 
+        # Stage 3 EOF operations
         for a, b in EOF_DUTY_CYCLES:
             # XXX compute deficit for first iteration
             stage_3_tick_ops = itertools.cycle(
@@ -442,13 +421,9 @@ def generate_player(
         # eof_trampoline_7_stage3_page:
         # ; ...
 
+    # Generated python code for player operations
     with open(opcode_filename, "w") as f:
-        f.write("""import numpy
-import player_op
-
-
-class PlayerOps:
-""")
+        f.write("import numpy\nimport player_op\n\n\nclass PlayerOps:\n")
 
         for name, op in audio_player_ops.items():
             f.write("    %s = player_op.%s\n" % (name, op.define_self()))
@@ -475,6 +450,7 @@ class PlayerOps:
         f.write(")\n")
 
         # TODO: count toggles
+
 
 def main():
     generate_player(
