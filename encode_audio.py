@@ -112,7 +112,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             opcodes_generated.PlayerOps.TICK_00)), dtype=numpy.float32)]))
 
     # Starting speaker applied voltage.
-    voltage1 = voltage2 = -1.0  # * 2.5
+    voltage1 = voltage2 = 1.0  # * 2.5
 
     toggles = 0
 
@@ -152,7 +152,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         # print(frame_offset, voltages.shape, voltages.nbytes)
         opcode_idx = lookahead.evolve_return_best(
             sp, y1, y2, voltage1, voltage2, voltage1 * voltages,
-            data[i:i+lookahead_steps])
+            data[i:i + lookahead_steps])
 
         opcode = next_candidate_opcodes[opcode_idx]
 
@@ -222,6 +222,24 @@ def preprocess(
     return data
 
 
+def resample_output(output_buffer, input_audio, sample_rate, output_rate,
+                    noise_output=False):
+    resampled_output = librosa.resample(
+        numpy.array(output_buffer, dtype=numpy.float32),
+        orig_sr=sample_rate,
+        target_sr=output_rate)
+
+    resampled_noise = None
+    if noise_output:
+        noise_len = min(len(output_buffer), len(input_audio))
+        resampled_noise = librosa.resample(
+            numpy.array(output_buffer[:noise_len] - input_audio[:noise_len]),
+            orig_sr=sample_rate,
+            target_sr=output_rate)
+
+    return resampled_output, resampled_noise
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--clock", choices=['pal', 'ntsc'],
@@ -259,24 +277,51 @@ def main():
 
     output_rate = 44100
 
-    output = numpy.array(list(
-        audio_bytestream(input_audio, args.step_size, args.lookahead_cycles,
-                         sample_rate)), dtype=numpy.float32)
+    resampled_output = []
+    resampled_noise = []
+    output_buffer = []
+    input_offset = 0
+    for idx, sample in enumerate(audio_bytestream(
+            input_audio, args.step_size, args.lookahead_cycles, sample_rate)):
+        output_buffer.append(sample)
+        input_offset += 1
+
+        # Keep accumulating as long as we have <10MB in the buffer, or are
+        # within 10MB from the end.  This ensures we have enough samples to
+        # resample including the last (partial) buffer
+        if len(output_buffer) < 10 * 1024 * 1024:
+            continue
+        if (len(input_audio) - input_offset) < 10 * 1024 * 1024:
+            continue
+        resampled_output_buffer, resampled_noise_buffer = resample_output(
+            output_buffer, input_audio[input_offset - len(output_buffer):],
+            sample_rate, output_rate, bool(args.noise_output)
+        )
+        resampled_output.extend(resampled_output_buffer)
+        if args.noise_output:
+            resampled_noise.extend(resampled_noise_buffer)
+
+        output_buffer = []
+
+    if output_buffer:
+        resampled_output_buffer, resampled_noise_buffer = resample_output(
+            output_buffer, input_audio[input_offset - len(output_buffer):],
+            sample_rate, output_rate, bool(args.noise_output)
+        )
+        resampled_output.extend(resampled_output_buffer)
+        if args.noise_output:
+            resampled_noise.extend(resampled_noise_buffer)
+
     if args.noise_output:
-        noise = numpy.array(output - input_audio[:len(output)])
-        noise = librosa.resample(noise, orig_sr=sample_rate,
-                                 target_sr=output_rate)
         with sf.SoundFile(
                 args.noise_output, "w", output_rate, channels=1,
                 format='WAV') as f:
-            f.write(noise)
+            f.write(resampled_noise)
 
-    output = librosa.resample(output, orig_sr=sample_rate,
-                              target_sr=output_rate)
     with sf.SoundFile(
             args.output, "w", output_rate, channels=1, format='WAV') \
             as f:
-        f.write(output)
+        f.write(resampled_output)
 
     # with open(args.output, "wb+") as f:
     #     for opcode in audio_bytestream(
