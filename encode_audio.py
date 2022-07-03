@@ -26,6 +26,7 @@
 
 import argparse
 import collections
+import contextlib
 import functools
 import librosa
 import numpy
@@ -133,7 +134,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     clicks = 0
     min_lookahead_steps = lookahead_steps
-    while i < dlen // 1:
+    while i < dlen // 10:
         # XXX handle end of data cleanly
         if i >= next_tick:
             eta.print_status()
@@ -277,51 +278,52 @@ def main():
 
     output_rate = 44100
 
-    resampled_output = []
-    resampled_noise = []
     output_buffer = []
     input_offset = 0
-    for idx, sample in enumerate(audio_bytestream(
-            input_audio, args.step_size, args.lookahead_cycles, sample_rate)):
-        output_buffer.append(sample)
-        input_offset += 1
 
-        # Keep accumulating as long as we have <10MB in the buffer, or are
-        # within 10MB from the end.  This ensures we have enough samples to
-        # resample including the last (partial) buffer
-        if len(output_buffer) < 10 * 1024 * 1024:
-            continue
-        if (len(input_audio) - input_offset) < 10 * 1024 * 1024:
-            continue
-        resampled_output_buffer, resampled_noise_buffer = resample_output(
-            output_buffer, input_audio[input_offset - len(output_buffer):],
-            sample_rate, output_rate, bool(args.noise_output)
-        )
-        resampled_output.extend(resampled_output_buffer)
-        if args.noise_output:
-            resampled_noise.extend(resampled_noise_buffer)
-
-        output_buffer = []
-
-    if output_buffer:
-        resampled_output_buffer, resampled_noise_buffer = resample_output(
-            output_buffer, input_audio[input_offset - len(output_buffer):],
-            sample_rate, output_rate, bool(args.noise_output)
-        )
-        resampled_output.extend(resampled_output_buffer)
-        if args.noise_output:
-            resampled_noise.extend(resampled_noise_buffer)
+    output_context = sf.SoundFile(
+        args.output, "w", output_rate, channels=1, format='WAV')
 
     if args.noise_output:
-        with sf.SoundFile(
-                args.noise_output, "w", output_rate, channels=1,
-                format='WAV') as f:
-            f.write(resampled_noise)
+        noise_context = sf.SoundFile(
+            args.noise_output, "w", output_rate, channels=1,
+            format='WAV')
+    else:
+        # We're not creating a file but still need a context
+        noise_context = contextlib.nullcontext
 
-    with sf.SoundFile(
-            args.output, "w", output_rate, channels=1, format='WAV') \
-            as f:
-        f.write(resampled_output)
+    with output_context as output_f, noise_context as noise_f:
+        for idx, sample in enumerate(audio_bytestream(
+                input_audio, args.step_size, args.lookahead_cycles,
+                sample_rate)):
+            output_buffer.append(sample)
+            input_offset += 1
+
+            # Keep accumulating as long as we have <10MB in the buffer, or are
+            # within 10MB from the end.  This ensures we have enough samples to
+            # resample including the last (partial) buffer
+            if len(output_buffer) < 10 * 1024 * 1024:
+                continue
+            if (len(input_audio) - input_offset) < 10 * 1024 * 1024:
+                continue
+            resampled_output_buffer, resampled_noise_buffer = resample_output(
+                output_buffer, input_audio[input_offset - len(output_buffer):],
+                sample_rate, output_rate, bool(args.noise_output)
+            )
+            output_f.write(resampled_output_buffer)
+            if args.noise_output:
+                noise_f.write(resampled_noise_buffer)
+
+            output_buffer = []
+
+        if output_buffer:
+            resampled_output_buffer, resampled_noise_buffer = resample_output(
+                output_buffer, input_audio[input_offset - len(output_buffer):],
+                sample_rate, output_rate, bool(args.noise_output)
+            )
+            output_f.write(resampled_output_buffer)
+            if args.noise_output:
+                noise_f.write(resampled_noise_buffer)
 
     # with open(args.output, "wb+") as f:
     #     for opcode in audio_bytestream(
