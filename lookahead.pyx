@@ -4,8 +4,6 @@
 # cython: wraparound=False
 
 
-cimport cython
-from libc.stdlib cimport malloc, free
 import numpy as np
 
 
@@ -34,7 +32,6 @@ def evolve_return_best(object speaker, float position1, float position2, float v
             error += (y * scale - data[j]) ** 2
             if error > lowest_err:
                 break
-            # output[i, j] = y
             x2 = x1
             x1 = voltages[i, j]  # XXX does this really always lag?
             y2 = y1
