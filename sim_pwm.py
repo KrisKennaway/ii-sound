@@ -36,7 +36,7 @@ def filter_audio(
     x2 = 0
 
     x1 = 1.0
-    scale = 650  # TODO: analytic expression
+    scale = 1150  # TODO: analytic expression
     maxy = 0
 
     cycles_per_sample = int(sim_rate / sample_rate)
@@ -48,7 +48,7 @@ def filter_audio(
     cycles = 0
     y = 0
     bias = 1.0
-    while audio_idx <= len(audio) / 10:
+    while audio_idx < len(audio) / 1:
         if audio_idx % 10000 == 0:
             print(audio_idx, len(audio), y / scale, x1, sample, duty_cycle,
                   next_toggle)
@@ -71,7 +71,8 @@ def filter_audio(
             #     x1 = -1.0
             if bias == 1.0:
                 audio_idx += 1
-                sample = audio[audio_idx]
+                if audio_idx < len(audio):
+                    sample = audio[audio_idx]
                 duty_cycle = int((sample + 1) * cycles_per_sample / 2)
             else:
                 duty_cycle = cycles_per_sample - duty_cycle
