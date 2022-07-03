@@ -83,20 +83,7 @@ class Speaker:
         self.c2 = c2
         self.b1 = b1
         self.b2 = b2
-        # print(dt, w, d, e, c1,c2,b1,b2)
 
-        # 3000 - 241
-        # 2500 - 97
-        # 2000 - 24
-        # 1700 - 9.6
-        # 1600 - 8.8
-        # 1500 - 9.39
-        # 1400 - 10.46
-        # 1000 - 21.56
-
-        # 1600 - 3603
-        # 1000 - 708
-        # 800 - 802
         self.scale = numpy.float64(1 / 800)  # TODO: analytic expression
 
 
@@ -113,7 +100,9 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             opcodes_generated.PlayerOps.TICK_00)), dtype=numpy.float32)]))
 
     # Starting speaker applied voltage.
-    voltage1 = voltage2 = 1.0  # * 2.5
+    voltage1 = voltage2 = 1.0
+    # last 2 speaker positions
+    y1 = y2 = 1.0
 
     toggles = 0
 
@@ -127,15 +116,9 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # Keep track of how many opcodes we schedule
     opcode_counts = collections.defaultdict(int)
 
-    y1 = y2 = 1.0  # last 2 speaker positions
-    # data = numpy.full(data.shape, 0.0)
-    # data = numpy.sin(
-    #     numpy.arange(len(data)) * (2 * numpy.pi / (sample_rate / 3875)))
-
     clicks = 0
     min_lookahead_steps = lookahead_steps
     while i < dlen // 10:
-        # XXX handle end of data cleanly
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
@@ -150,13 +133,11 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             opcodes.candidate_opcodes(
                 frame_horizon(frame_offset, lookahead_steps),
                 lookahead_steps, opcode if frame_offset == 2047 else None)
-        # print(frame_offset, voltages.shape, voltages.nbytes)
         opcode_idx = lookahead.evolve_return_best(
             sp, y1, y2, voltage1, voltage2, voltage1 * voltages,
             data[i:i + lookahead_steps])
 
         opcode = next_candidate_opcodes[opcode_idx]
-
         opcode_length = opcodes.cycle_length(opcode)
         opcode_counts[opcode] += 1
         # toggles += opcodes.TOGGLES[opcode]
