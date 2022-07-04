@@ -118,7 +118,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     clicks = 0
     min_lookahead_steps = lookahead_steps
-    while i < dlen // 10:
+    while i < dlen // 1:
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
@@ -164,12 +164,12 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
                   numpy.mean(data[i:i + opcode_length]))
 
         # print(frame_offset, i / sample_rate, opcode)
-        for v in all_positions[0]:
-            yield (v * sp.scale).astype(numpy.float32)
+        # for v in all_positions[0]:
+        #     yield
         #     # print(v * sp.scale)
         # if frame_offset == 2047:
         #     print(opcode)
-        # yield opcode
+        yield opcode, (all_positions * sp.scale).astype(numpy.float32)
 
         i += opcode_length
         frame_offset = (frame_offset + 1) % 2048
@@ -244,6 +244,7 @@ def main():
     parser.add_argument("--norm_percentile", default=100,
                         help="Normalize to specified percentile value of input "
                              "audio")
+    parser.add_argument("--wav_output", type=str, help="output audio file")
     parser.add_argument("--noise_output", type=str, help="output audio file")
     parser.add_argument("input", type=str, help="input audio file to convert")
     parser.add_argument("output", type=str, help="output audio file")
@@ -262,8 +263,13 @@ def main():
     output_buffer = []
     input_offset = 0
 
-    output_context = sf.SoundFile(
-        args.output, "w", output_rate, channels=1, format='WAV')
+    opcode_context = open(args.output, "wb+")
+
+    if args.wav_output:
+        wav_context = sf.SoundFile(
+            args.wav_output, "w", output_rate, channels=1, format='WAV')
+    else:
+        wav_context = contextlib.nullcontext
 
     if args.noise_output:
         noise_context = sf.SoundFile(
@@ -273,12 +279,19 @@ def main():
         # We're not creating a file but still need a context
         noise_context = contextlib.nullcontext
 
-    with output_context as output_f, noise_context as noise_f:
-        for idx, sample in enumerate(audio_bytestream(
+    with wav_context as wav_f, noise_context as noise_f, opcode_context\
+            as opcode_f:
+        for idx, sample_data in enumerate(audio_bytestream(
                 input_audio, args.step_size, args.lookahead_cycles,
                 sample_rate)):
-            output_buffer.append(sample)
-            input_offset += 1
+            opcode, samples = sample_data
+            # print(hex(idx), opcode, hex(opcode.byte))
+            opcode_f.write(bytes([opcode.byte]))
+
+            output_buffer.extend(samples)
+            input_offset += len(samples)
+
+            # TODO: don't bother computing if we're not writing wavs
 
             # Keep accumulating as long as we have <10MB in the buffer, or are
             # within 10MB from the end.  This ensures we have enough samples to
@@ -291,7 +304,8 @@ def main():
                 output_buffer, input_audio[input_offset - len(output_buffer):],
                 sample_rate, output_rate, bool(args.noise_output)
             )
-            output_f.write(resampled_output_buffer)
+            if args.wav_output:
+                wav_f.write(resampled_output_buffer)
             if args.noise_output:
                 noise_f.write(resampled_noise_buffer)
 
@@ -302,11 +316,12 @@ def main():
                 output_buffer, input_audio[input_offset - len(output_buffer):],
                 sample_rate, output_rate, bool(args.noise_output)
             )
-            output_f.write(resampled_output_buffer)
+            if args.wav_output:
+                wav_f.write(resampled_output_buffer)
             if args.noise_output:
                 noise_f.write(resampled_noise_buffer)
 
-    # with open(args.output, "wb+") as f:
+    # with  as f:
     #     for opcode in audio_bytestream(
     #             preprocess(args.input, sample_rate, args.normalization,
     #                        args.norm_percentile), args.step_size,

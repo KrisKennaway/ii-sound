@@ -90,35 +90,35 @@ eof_trampoline_16_stage2:
 eof_trampoline_17_stage2:
     LDA WDATA ; 4 cycles
     STA @0+1 ; 4 cycles
-@0:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
+@0:
     JMP (eof_trampoline_17_stage3_page) ; 6 cycles
 
 eof_trampoline_18_stage2:
     LDA WDATA ; 4 cycles
     STA @0+1 ; 4 cycles
-@0:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+@0:
     JMP (eof_trampoline_18_stage3_page) ; 6 cycles
 
 eof_trampoline_19_stage2:
     LDA WDATA ; 4 cycles
     STA @0+1 ; 4 cycles
-@0:
     NOP ; 2 cycles
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
+@0:
     JMP (eof_trampoline_19_stage3_page) ; 6 cycles
 
 eof_trampoline_20_stage2:
     LDA WDATA ; 4 cycles
     STA @0+1 ; 4 cycles
-@0:
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+@0:
     JMP (eof_trampoline_20_stage3_page) ; 6 cycles
 
 eof_trampoline_21_stage2:
@@ -130,11 +130,11 @@ eof_trampoline_21_stage2:
 eof_trampoline_22_stage2:
     LDA WDATA ; 4 cycles
     STA @0+1 ; 4 cycles
-@0:
     NOP ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+@0:
     JMP (eof_trampoline_22_stage3_page) ; 6 cycles
 
 eof_stage_2_10_10:

@@ -36,8 +36,6 @@
 ;    speaker is in a known trajectory.  We can compensate for this in the audio encoder.
 
 .proc main
-.org $2000
-
 init:
     JMP bootstrap
 
@@ -53,10 +51,10 @@ MAC:      .byte   $00,$08,$DC,$01,$02,$03    ; W5100 MAC ADDRESS
 ; TODO: make slot I/O addresses customizable at runtime - would probably require somehow
 ; compiling a list of all of the binary offsets at which we reference $C09x and patching
 ; them in memory or on-disk.
-WMODE = $C094
-WADRH = $C095
-WADRL = $C096
-WDATA = $C097
+WMODE = $C0b4
+WADRH = $C0b5
+WADRL = $C0b6
+WDATA = $C0b7
 
 ; W5100 LOCATIONS
 MACADDR  =   $0009    ; MAC ADDRESS
@@ -271,12 +269,23 @@ setup:
     lda #$00
     sta RXRD
 
-    ; to restore after checkrecv
-    LDY #>RXBASE
     LDX #>S0RXRSR
     STX WADRH
     LDX #<S0RXRSR
-    JMP checkrecv
+
+fill_socket:
+    LDA #$07 ; 2
+@0:
+    STX WADRL       ; #<S0RXRSR
+    CMP WDATA       ; High byte of received size
+    BCS @0          ; in common case when there is already sufficient data waiting.
+    ; There is data to read - we don't care exactly how much because it's at least 2K
+    ; point to start of socket buffer
+    LDX #>RXBASE
+    STX WADRH
+    LDX #$00
+    STX WADRL
+    JMP (WDATA)     ; Start playing!
 
 real_exit:
     INC  RESET_VECTOR+2  ; Invalidate power-up byte
@@ -291,10 +300,13 @@ exit_parmtable:
     .BYTE 0             ; Byte reserved for future use
     .WORD 0000          ; Pointer reserved for future use
 
-; The actual player code, which will be copied to $3xx for execution
-;
-; opcode cycle counts are for 65c02, for 6502 they are 1 less because JMP (indirect) is 5 cycles instead of 6.
+RXRD:
+    .byte 00
 
+; Stage 2 and 3 player code
+.include "player_stage2_3_generated.s"
+
+; Stage 1 player code, which will be copied to $3xx for execution
 begin_copy_page1:
 ; generated audio playback code
 .include "player_generated.s"
@@ -302,339 +314,11 @@ begin_copy_page1:
 ; Quit to ProDOS
 exit:
     JMP real_exit
-
-; Manage W5100 socket buffer and ACK TCP stream.
-;
-; In order to simplify the buffer management we expect this ACK opcode to consume the last 4 bytes in a 2K "TCP frame".
-; i.e. we can assume that we need to consume exactly 2K from the W5100 socket buffer.
-;
-; While during this we need to keep ticking the speaker at a regular cadence to maintain the same net position of the
-; speaker cone.  We choose to tick every 14 cycles, which requires adding in minimal NOP padding.
-;
-; We end up ticking 8 times with 10 cycles left over, assuming we don't stall waiting for the socket buffer to refill.
-;
-; From the point of view of speaker voltages this slowpath is equivalent to the following opcode sequence:
-; TICK_6 (TICK_14 * 7) with 4 cycles left over, adding 4 to the effective n of the next TICK_n we jump to (as chosen by
-; the encoder).  XXX timing
-;
-; If we do stall waiting for data then there is no need to worry about maintaining an even cadence, because audio
-; will already be disrupted (since the encoder won't have predicted it, so will be tracking wrong).  The speaker will
-; resynchronize within a few hundred microseconds though.
-end_of_frame_10_10:
-    STA TICK ; 4
-    JMP _end_of_frame_10_10 ; 3 rest of end_of_frame doesn't fit in page 3
-
-end_of_frame_20_4:
-    STA TICK ; 4
-    JMP _end_of_frame_10_10 ; 3 rest of end_of_frame doesn't fit in page 3
-
 end_copy_page1:
-;
-;_end_of_frame:
-;    STA zpdummy ; 3
-;    ; Save the W5100 address pointer so we can come back here later
-;    ; We know the low-order byte is 0 because Socket RX memory is page-aligned and so is 2K frame.
-;    ; IMPORTANT - from now on until we restore this below, we can't trash the Y register!
-;    STA TICK ; 4 [10]
-;    LDY WADRH ; 4
-;
-;    ; Read Received Read pointer
-;    LDA #>S0RXRD ; 2
-;    STA TICK ; 4 [10]
-;    STA WADRH ; 4
-;
-;    LDX #<S0RXRD ; 2
-;    STA TICK ; 4 [10]
-;
-;    STX WADRL ; 4
-;    NOP ; 2
-;    STA TICK ; 4 [10]
-;    LDA WDATA ; 4 Read high byte
-;
-;    ; No need to read low byte since it's guaranteed to be 0 since we're at the end of a 2K frame.
-;
-;    ; Update new Received Read pointer
-;    ; We have received an additional 2KB
-;    CLC ; 2
-;    STA TICK ; 4 [10]
-;    ADC #$08 ; 2
-;
-;    STX WADRL ; 4 Reset address pointer, X still has #<S0RXRD
-;    STA TICK ; 4 [10]
-;    ; No need to store low byte since it's unchanged at 0
-;    STA WDATA ; 4 Store new high byte
-;
-;    ; Send the Receive command
-;    LDA #<S0CR ; 2
-;    STA TICK ; 4 [10]
-;    STA WADRL ; 4
-;
-;    LDA #SCRECV ; 2
-;    STA TICK ; 4 [10]
-;    STA WDATA ; 4
-;
-;checkrecv:
-;    LDA #<S0RXRSR   ; 2 Socket 0 Received Size register
-;    STA TICK ; 4 [10]
-;    LDX #$07 ; 2
-;    NOP ; 2
-;    NOP ; 2
-;    STA TICK ; 4 [10]
-;    ; we might loop an unknown number of times here waiting for data but the default should be to fall
-;    ; straight through
-;@0:
-;    STA WADRL       ; 4
-;    NOP ; 2
-;    STA TICK ; 4 [10]
-;    CPX WDATA       ; 4 High byte of received size
-;    BCS @0          ; 2 in common case when there is already sufficient data waiting.
-;    STA TICK ; 4 [10]
-;
-;    ; point W5100 back into the RX buffer where we left off
-;    ; There is data to read - we don't care exactly how much because it's at least 2K
-;    ;
-;    ; Restore W5100 address pointer where we last found it.
-;    ;
-;    ; It turns out that the W5100 automatically wraps the address pointer at the end of the 8K RX/TX buffers
-;    ; Since we're using an 8K socket, that means we don't have to do any work to manage the read pointer!
-;    STY WADRH  ; 4
-;    LDX #$00 ; 2
-;    STA TICK ; 4 [10]
-;
-;    STX WADRL  ; 4
-;    NOP ; 2
-;    STA TICK ; 4 [10]
-;    JMP (WDATA) ; 6
-;.endproc
 
+.segment "DATA256"
+begin_copy_page8:
+.include "player_stage3_table_generated.s"
+end_copy_page8:
 
-; 72 cycles --> 133 with tick padding
-; + 7 from dispatcher = 140 total
-_end_of_frame_10_10:
-    ; Save the W5100 address pointer so we can come back here later
-    ; We know the low-order byte is 0 because Socket RX memory is page-aligned and so is 2K frame.
-    ; IMPORTANT - from now on until we restore this below, we can't trash the Y register!
-    STA zpdummy ; 3
-    STA TICK ; 4
-    LDY WADRH ; 4
-
-    ; Update new Received Read pointer
-    ; We know we have received an additional 2KB, so we don't need to read the current value from the hardware.  We can
-    ; track it ourselves instead.
-    LDA #>S0RXRD ; 2
-    STA TICK ; [10]
-    STA WADRH ; 4
-    LDX #<S0RXRD ; 2
-    STA TICK ; [10]
-    STX WADRL ; 4
-
-    CLC ; 2
-    STA TICK ; [10]
-    LDA RXRD ; 4
-    ADC #$08 ; 2
-    STA TICK ; [10]
-    STA WDATA ; 4 Store new high byte
-    LDX #<S0CR ; 2 prepare to reset WADRL
-    STA TICK ; [10]
-    STA RXRD ; 4
-
-    ; Send the Receive command
-    LDA #SCRECV ; 2
-    STA TICK ; [10]
-    STX WADRL ; 4
-    LDX #<S0RXRSR   ; 2 Socket 0 Received Size register
-    STA TICK ; [10]
-    STA WDATA ; 4 #SCRECV
-
-checkrecv:
-    LDA #$07 ; 2
-    ; we might loop an unknown number of times here waiting for data but the default should be to fall
-    ; straight through
-@0:
-    STA TICK ; [10]
-    STX WADRL       ; 4 #<S0RXRSR
-    NOP ; 2
-    STA TICK ; [10]
-    CMP WDATA       ; 4 High byte of received size
-    BCS @0          ; 2 in common case when there is already sufficient data waiting.
-    STA TICK ; [10]
-    ; point W5100 back into the RX buffer where we left off
-    ; There is data to read - we don't care exactly how much because it's at least 2K
-    ;
-    ; Restore W5100 address pointer where we last found it.
-    ;
-    ; It turns out that the W5100 automatically wraps the address pointer at the end of the 8K RX/TX buffers
-    ; Since we're using an 8K socket, that means we don't have to do any work to manage the read pointer!
-    STY WADRH  ; 4
-    LDX #$00 ; 2
-    STA TICK ; [10]
-    STX WADRL  ; 4
-    NOP ; 2
-    STA TICK ; [10]
-    JMP (WDATA) ; 6
-
-; 74 cycles + 7 from dispatcher = 81 total
-_end_of_frame:
-    ; Save the W5100 address pointer so we can come back here later
-    ; We know the low-order byte is 0 because Socket RX memory is page-aligned and so is 2K frame.
-    ; IMPORTANT - from now on until we restore this below, we can't trash the Y register!
-    LDY WADRH ; 4
-
-    ; Update new Received Read pointer
-    ; We know we have received an additional 2KB, so we don't need to read the current value from the hardware.  We can
-    ; track it ourselves instead.
-    LDA #>S0RXRD ; 2
-    STA WADRH ; 4
-    LDA #<S0RXRD ; 2
-    STA WADRL ; 4
-
-    ; TODO: in principle we could prepare this outside of the EOF path
-    LDA RXRD ; 4
-    CLC ; 2
-    ADC #$08 ; 2
-    STA WDATA ; 4 Store new high byte
-    STA RXRD ; 4 Save for next time
-
-    ; Send the Receive command
-    LDA #<S0CR ; 2 prepare to reset WADRL
-    STA WADRL ; 4
-    LDA #SCRECV ; 2
-    STA WDATA ; 4 #SCRECV
-
-    LDA #$07 ; 2
-    ; we might loop an unknown number of times here waiting for data but the default should be to fall
-    ; straight through
-    LDX #<S0RXRSR   ; 2 Socket 0 Received Size register
-@0:
-    STX WADRL       ; 4 #<S0RXRSR
-    CMP WDATA       ; 4 High byte of received size
-    BCS @0          ; 2 in common case when there is already sufficient data waiting.
-    ; point W5100 back into the RX buffer where we left off
-    ; There is data to read - we don't care exactly how much because it's at least 2K
-    ;
-    ; Restore W5100 address pointer where we last found it.
-    ;
-    ; It turns out that the W5100 automatically wraps the address pointer at the end of the 8K RX/TX buffers
-    ; Since we're using an 8K socket, that means we don't have to do any work to manage the read pointer!
-    STY WADRH  ; 4
-    LDA #$00 ; 2
-    STA WADRL  ; 4
-    JMP (WDATA) ; 6
-
-; 4 20 4 20 4 20 4 20 4 20 4 6 = 130
-_end_of_frame_4_20:
-    ; Save the W5100 address pointer so we can come back here later
-    ; We know the low-order byte is 0 because Socket RX memory is page-aligned and so is 2K frame.
-    ; IMPORTANT - from now on until we restore this below, we can't trash the Y register!
-    LDY WADRH ; 4
-    STA zpdummy ; 3
-
-    ; Update new Received Read pointer
-    ; We know we have received an additional 2KB, so we don't need to read the current value from the hardware.  We can
-    ; track it ourselves instead.
-    LDA #>S0RXRD ; 2
-    STA WADRH ; 4
-    STA TICK ; 4 [20]
-    STA TICK ; 4 [4]
-    LDA #<S0RXRD ; 2
-    STA WADRL ; 4
-
-    ; TODO: in principle we could prepare this outside of the EOF path
-    LDA RXRD ; 4
-    CLC ; 2
-    ADC #$08 ; 2
-    NOP ; 2 XXX
-    STA TICK ; 4 [20]
-    STA TICK ; 4 [4]
-    STA WDATA ; 4 Store new high byte
-    STA RXRD ; 4 Save for next time
-
-    ; Send the Receive command
-    LDA #<S0CR ; 2 prepare to reset WADRL
-    STA WADRL ; 4
-    LDA #SCRECV ; 2
-    STA TICK ; 4 [20]
-    STA TICK ; 4 [4]
-    STA WDATA ; 4 #SCRECV
-
-    LDA #$07 ; 2
-    ; we might loop an unknown number of times here waiting for data but the default should be to fall
-    ; straight through
-    LDX #<S0RXRSR   ; 2 Socket 0 Received Size register
-@0:
-    STX WADRL       ; 4 #<S0RXRSR
-    CMP WDATA       ; 4 High byte of received size
-    STA TICK ; 4 [20]
-    STA TICK ; 4 [4]
-    BCS @0          ; 2 in common case when there is already sufficient data waiting.
-    ; point W5100 back into the RX buffer where we left off
-    ; There is data to read - we don't care exactly how much because it's at least 2K
-    ;
-    ; Restore W5100 address pointer where we last found it.
-    ;
-    ; It turns out that the W5100 automatically wraps the address pointer at the end of the 8K RX/TX buffers
-    ; Since we're using an 8K socket, that means we don't have to do any work to manage the read pointer!
-    STY WADRH  ; 4
-    LDA #$00 ; 2
-    STA WADRL  ; 4
-    NOP ; 2
-    NOP ; 2
-    STA TICK ; 4 [20]
-    STA TICK ; 4 [4]
-    JMP (WDATA) ; 6
-
-; 4
-_end_of_frame_4_10:
-    ; Save the W5100 address pointer so we can come back here later
-    ; We know the low-order byte is 0 because Socket RX memory is page-aligned and so is 2K frame.
-    ; IMPORTANT - from now on until we restore this below, we can't trash the Y register!
-    STA zpdummy ; 3
-    STA TICK ; [10]
-    STA TICK ; [4]
-    LDY WADRH ; 4
-
-    ; Update new Received Read pointer
-    ; We know we have received an additional 2KB, so we don't need to read the current value from the hardware.  We can
-    ; track it ourselves instead.
-    LDA #>S0RXRD ; 2
-    STA WADRH ; 4
-    LDA #<S0RXRD ; 2
-    STA WADRL ; 4
-
-    ; TODO: in principle we could prepare this outside of the EOF path
-    LDA RXRD ; 4
-    CLC ; 2
-    ADC #$08 ; 2
-    STA WDATA ; 4 Store new high byte
-    STA RXRD ; 4 Save for next time
-
-    ; Send the Receive command
-    LDA #<S0CR ; 2 prepare to reset WADRL
-    STA WADRL ; 4
-    LDA #SCRECV ; 2
-    STA WDATA ; 4 #SCRECV
-
-    LDA #$07 ; 2
-    ; we might loop an unknown number of times here waiting for data but the default should be to fall
-    ; straight through
-    LDX #<S0RXRSR   ; 2 Socket 0 Received Size register
-@0:
-    STX WADRL       ; 4 #<S0RXRSR
-    CMP WDATA       ; 4 High byte of received size
-    BCS @0          ; 2 in common case when there is already sufficient data waiting.
-    ; point W5100 back into the RX buffer where we left off
-    ; There is data to read - we don't care exactly how much because it's at least 2K
-    ;
-    ; Restore W5100 address pointer where we last found it.
-    ;
-    ; It turns out that the W5100 automatically wraps the address pointer at the end of the 8K RX/TX buffers
-    ; Since we're using an 8K socket, that means we don't have to do any work to manage the read pointer!
-    STY WADRH  ; 4
-    LDA #$00 ; 2
-    STA WADRL  ; 4
-    JMP (WDATA) ; 6
-
-
-RXRD:
-    .byte 00
 .endproc

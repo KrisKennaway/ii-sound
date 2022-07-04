@@ -83,12 +83,12 @@ def eof_trampoline_stage2(cycles) -> List[opcodes_6502.Opcode]:
     ops = [
         opcodes_6502.Opcode(4, 3, "LDA WDATA"),
         opcodes_6502.Opcode(4, 3, "STA @0+1"),
-        opcodes_6502.Literal("@0:", indent=0),
         opcodes_6502.Opcode(
             6, 3, "JMP (eof_trampoline_%d_stage3_page)" % cycles)
     ]
     if cycles < 7 or cycles == 8:
-        return label + ops
+        return label + ops[:-1] + [opcodes_6502.Literal("@0:", indent=0)] + [
+            ops[-1]]
 
     # For cycles == 7 or > 8 we need to interleave a STA $C030 into stage 2
     # because we couldn't fit it in stage 1
@@ -97,7 +97,12 @@ def eof_trampoline_stage2(cycles) -> List[opcodes_6502.Opcode]:
         opcodes_6502.STA_C030,
         opcodes_6502.padding(100)
     ]
-    return label + list(opcodes_6502.interleave_opcodes(interleave_ops, ops))
+    res = label + list(opcodes_6502.interleave_opcodes(interleave_ops, ops))
+    # We can't insert the label before interleaving because we might have
+    # NOP/STA inserted after it
+    # TODO: this is a bit of a hack - add support for binding the literal to
+    # the following opcode so it can't be split
+    return res[:-1] + [opcodes_6502.Literal("@0:", indent=0)] + [res[-1]]
 
 
 EOF_TRAMPOLINE_STAGE2 = {
