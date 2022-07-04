@@ -220,7 +220,7 @@ def eof_trampoline_stage3_page_offsets(duty_cycles):
             if cycles is None:
                 continue
             cycle1, cycles2 = cycles
-            if len(page) < (128 - len(cycles2)):
+            if len(page) <= (128 - len(cycles2)):
                 page.extend((cycle1, cycle2) for cycle2 in cycles2)
                 longest_first_cycles[i] = None
                 left -= 1
@@ -231,8 +231,8 @@ def eof_trampoline_stage3_page_offsets(duty_cycles):
     for page_idx, page in enumerate(pages):
         offset = 0
         for a, b in page:
-            offset += 2
             page_offsets[(a, b)] = (page_idx, offset)
+            offset += 2
 
     return page_offsets
 
@@ -354,7 +354,8 @@ EOF_STAGE2_10_10_BASE = (
 def generate_player(
         opcode_filename: str,
         player_stage1_filename: str,
-        player_stage2_filename: str
+        player_stage2_filename: str,
+        player_stage3_table_filename: str
 ):
     # Generate assembly code for page 3 operations
     with open(player_stage1_filename, "w+") as f:
@@ -448,14 +449,13 @@ def generate_player(
             f.write("%s\n" % str(op))
         f.write("\n")
         op_name = "END_OF_FRAME_10_10_STAGE2"
-        stage_2_3_ops[op_name]= player_op.PlayerOp(
-                name=op_name,
-                byte=0xff,  # Dummy
-                toggles=numpy.array(opcodes_6502.toggles(eof_10_10_stage2_ops))
-            )
+        stage_2_3_ops[op_name] = player_op.PlayerOp(
+            name=op_name,
+            byte=0xff,  # Dummy
+            toggles=numpy.array(opcodes_6502.toggles(eof_10_10_stage2_ops))
+        )
         stage_2_ops_by_stage_1_op.setdefault(
             "END_OF_FRAME_10_10_STAGE1", []).append(op_name)
-
 
         # Stage 3 EOF operations
         for a, b in EOF_DUTY_CYCLES:
@@ -518,17 +518,28 @@ def generate_player(
             stage_2_ops_by_stage_1_op.setdefault(
                 "END_OF_FRAME_%d_STAGE1" % a, []).append(name)
 
+    with open(player_stage3_table_filename, "w+") as f:
         # We bin pack each (a, b) duty cycle onto the same jump table page
-        # XXX move
-        pages_by_first_duty_cycle = {}
+        first_duty_cycles_by_page = {}
         for ab, po in EOF_TRAMPOLINE_STAGE3_PAGE_OFFSETS.items():
-            pages_by_first_duty_cycle[ab[0]] = po[0]
+            first_duty_cycles_by_page.setdefault(po[0], []).append(
+                (po[1], ab))
 
-        # XXX assemble page offset tables
-        # eof_trampoline_4_stage3_page:
-        # eof_trampoline_6_stage3_page:
-        # eof_trampoline_7_stage3_page:
-        # ; ...
+        for page, data in first_duty_cycles_by_page.items():
+            offsets = [None] * 128
+            first_cycles = set()
+            for offset, cycles in data:
+                offsets[offset // 2] = cycles
+                first_cycles.add(cycles[0])
+            for first_cycle in sorted(list(first_cycles)):
+                f.write("eof_trampoline_%d_stage3_page:\n" % first_cycle)
+
+            for offset, cycles in enumerate(offsets):
+                if cycles is None:
+                    f.write("    .word $FFFF\n")
+                else:
+                    f.write("    .addr eof_stage_3_%d_%d\n" % cycles)
+            f.write("\n")
 
     # Generated python code for player operations
     with open(opcode_filename, "w") as f:
@@ -574,9 +585,9 @@ def main():
     generate_player(
         opcode_filename="opcodes_generated.py",
         player_stage1_filename="player/player_generated.s",
-        player_stage2_filename="player/player_stage2_generated.s"
+        player_stage2_filename="player/player_stage2_3_generated.s",
+        player_stage3_table_filename="player/player_stage3_table_generated.s"
     )
-
 
 if __name__ == "__main__":
     main()
