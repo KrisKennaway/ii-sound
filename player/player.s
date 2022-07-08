@@ -285,6 +285,8 @@ fill_socket:
     STX WADRH
     LDX #$00
     STX WADRL
+
+    LDY #$31        ; required invariant for core audio loop
     JMP (WDATA)     ; Start playing!
 
 real_exit:

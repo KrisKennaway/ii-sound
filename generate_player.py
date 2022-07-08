@@ -8,19 +8,17 @@ import player_op
 
 def audio_opcodes() -> Iterable[Tuple[opcodes_6502.Opcode]]:
     # These two basic sequences let us chain together STA $C030 with any number
-    # >= 10 of intervening cycles (except 11).  We don't need to explicitly
+    # >= 10 of intervening cycles  We don't need to explicitly
     # include 6 or more cycles of NOP because those can be obtained by chaining
     # together JMP (WDATA) to itself
-    #
-    # XXX support 11 cycles explicitly?
     yield tuple(
         [nop for nop in opcodes_6502.nops(4)] + [
             opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
 
     yield tuple(
         [nop for nop in opcodes_6502.nops(4)] + [
-            opcodes_6502.Opcode(3, 2, "STA zpdummy"),
-            opcodes_6502.STA_C030, opcodes_6502.JMP_WDATA])
+            opcodes_6502.Opcode(5, 3, "STA $BFFF,Y", toggle=True),
+            opcodes_6502.JMP_WDATA])
 
 
 def duty_cycle_range():
@@ -28,8 +26,9 @@ def duty_cycle_range():
     for i in range(4, 42):
         if i == 5:
             # No single-cycle instructions
-            # XXX can we use a 5-cycle instruction that touches $C030 only on
-            # last cycle?
+            # TODO: use STA $BFFF,X(=31) as a 5-cycle instruction.  This would
+            #   be tricky since it requires maintaining X=31 across arbitrary
+            #   code interleaving
             continue
         cycles.append(i)
 
@@ -321,6 +320,7 @@ EOF_STAGE_3_BASE = [
     opcodes_6502.Opcode(4, 3, "STY WADRH"),
     opcodes_6502.Opcode(2, 2, "LDA #$00"),
     opcodes_6502.Opcode(4, 3, "STA WADRL"),
+    opcodes_6502.Opcode(2, 2, "LDY #$31"),
     opcodes_6502.Opcode(6, 3, "JMP (WDATA)"),
 ]
 

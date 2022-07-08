@@ -198,7 +198,7 @@ eof_stage_2_10_10:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -266,6 +266,7 @@ eof_stage_3_4_21:
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_23:
@@ -327,6 +328,7 @@ eof_stage_3_4_23:
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_24:
@@ -383,6 +385,7 @@ eof_stage_3_4_24:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_25:
@@ -440,6 +443,7 @@ eof_stage_3_4_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_26:
@@ -497,6 +501,7 @@ eof_stage_3_4_26:
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_27:
@@ -555,6 +560,7 @@ eof_stage_3_4_27:
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_28:
@@ -608,6 +614,7 @@ eof_stage_3_4_28:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_29:
@@ -664,7 +671,7 @@ eof_stage_3_4_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
@@ -721,6 +728,7 @@ eof_stage_3_4_30:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_31:
@@ -775,6 +783,7 @@ eof_stage_3_4_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_32:
@@ -829,6 +838,7 @@ eof_stage_3_4_32:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_33:
@@ -883,6 +893,7 @@ eof_stage_3_4_33:
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_34:
@@ -934,7 +945,7 @@ eof_stage_3_4_34:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -992,6 +1003,7 @@ eof_stage_3_4_35:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_36:
@@ -1043,6 +1055,7 @@ eof_stage_3_4_36:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_37:
@@ -1094,6 +1107,7 @@ eof_stage_3_4_37:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_38:
@@ -1146,6 +1160,7 @@ eof_stage_3_4_38:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_39:
@@ -1198,6 +1213,7 @@ eof_stage_3_4_39:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_40:
@@ -1249,6 +1265,7 @@ eof_stage_3_4_40:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_4_41:
@@ -1301,6 +1318,7 @@ eof_stage_3_4_41:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_21:
@@ -1373,6 +1391,7 @@ eof_stage_3_6_21:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_23:
@@ -1439,6 +1458,7 @@ eof_stage_3_6_23:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_24:
@@ -1499,6 +1519,7 @@ eof_stage_3_6_24:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_25:
@@ -1560,6 +1581,7 @@ eof_stage_3_6_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_26:
@@ -1615,7 +1637,7 @@ eof_stage_3_6_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
@@ -1681,6 +1703,7 @@ eof_stage_3_6_27:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_28:
@@ -1737,6 +1760,7 @@ eof_stage_3_6_28:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_29:
@@ -1796,7 +1820,7 @@ eof_stage_3_6_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
@@ -1857,6 +1881,7 @@ eof_stage_3_6_30:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_31:
@@ -1914,6 +1939,7 @@ eof_stage_3_6_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_32:
@@ -1970,6 +1996,7 @@ eof_stage_3_6_32:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_33:
@@ -2027,6 +2054,7 @@ eof_stage_3_6_33:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_34:
@@ -2080,7 +2108,7 @@ eof_stage_3_6_34:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
@@ -2140,7 +2168,7 @@ eof_stage_3_6_35:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -2194,6 +2222,7 @@ eof_stage_3_6_37:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_6_38:
@@ -2247,6 +2276,7 @@ eof_stage_3_6_38:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_18:
@@ -2314,6 +2344,7 @@ eof_stage_3_7_18:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_20:
@@ -2376,6 +2407,7 @@ eof_stage_3_7_20:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_21:
@@ -2449,6 +2481,7 @@ eof_stage_3_7_21:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_22:
@@ -2507,6 +2540,7 @@ eof_stage_3_7_22:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_23:
@@ -2574,6 +2608,7 @@ eof_stage_3_7_23:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_24:
@@ -2633,6 +2668,7 @@ eof_stage_3_7_24:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_25:
@@ -2695,6 +2731,7 @@ eof_stage_3_7_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_26:
@@ -2752,7 +2789,7 @@ eof_stage_3_7_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -2819,6 +2856,7 @@ eof_stage_3_7_27:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_29:
@@ -2879,7 +2917,7 @@ eof_stage_3_7_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA zpdummy ; 3 cycles
@@ -2939,6 +2977,7 @@ eof_stage_3_7_30:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_31:
@@ -2997,6 +3036,7 @@ eof_stage_3_7_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_32:
@@ -3053,6 +3093,7 @@ eof_stage_3_7_32:
     STA $C030 ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_33:
@@ -3111,6 +3152,7 @@ eof_stage_3_7_33:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_34:
@@ -3163,6 +3205,7 @@ eof_stage_3_7_34:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_36:
@@ -3216,6 +3259,7 @@ eof_stage_3_7_36:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_37:
@@ -3270,6 +3314,7 @@ eof_stage_3_7_37:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_7_38:
@@ -3323,6 +3368,7 @@ eof_stage_3_7_38:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_21:
@@ -3381,7 +3427,7 @@ eof_stage_3_8_21:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
@@ -3446,6 +3492,7 @@ eof_stage_3_8_23:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_25:
@@ -3506,6 +3553,7 @@ eof_stage_3_8_25:
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_26:
@@ -3562,6 +3610,13 @@ eof_stage_3_8_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_27:
@@ -3617,6 +3672,7 @@ eof_stage_3_8_27:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_29:
@@ -3674,6 +3730,7 @@ eof_stage_3_8_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_30:
@@ -3728,6 +3785,7 @@ eof_stage_3_8_30:
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_31:
@@ -3785,6 +3843,7 @@ eof_stage_3_8_31:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_33:
@@ -3837,7 +3896,7 @@ eof_stage_3_8_33:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
@@ -3896,6 +3955,13 @@ eof_stage_3_8_34:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_35:
@@ -3948,6 +4014,7 @@ eof_stage_3_8_35:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_8_37:
@@ -4000,6 +4067,7 @@ eof_stage_3_8_37:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_18:
@@ -4073,6 +4141,7 @@ eof_stage_3_9_18:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_20:
@@ -4140,6 +4209,7 @@ eof_stage_3_9_20:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_21:
@@ -4219,6 +4289,7 @@ eof_stage_3_9_21:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_22:
@@ -4281,6 +4352,7 @@ eof_stage_3_9_22:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_23:
@@ -4353,6 +4425,7 @@ eof_stage_3_9_23:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_24:
@@ -4416,6 +4489,7 @@ eof_stage_3_9_24:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_25:
@@ -4482,6 +4556,7 @@ eof_stage_3_9_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_26:
@@ -4542,7 +4617,7 @@ eof_stage_3_9_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
@@ -4605,6 +4680,7 @@ eof_stage_3_9_28:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_29:
@@ -4668,7 +4744,7 @@ eof_stage_3_9_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
@@ -4732,6 +4808,7 @@ eof_stage_3_9_30:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_31:
@@ -4793,6 +4870,7 @@ eof_stage_3_9_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_32:
@@ -4849,7 +4927,7 @@ eof_stage_3_9_32:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -4913,6 +4991,7 @@ eof_stage_3_9_33:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_34:
@@ -4966,6 +5045,7 @@ eof_stage_3_9_34:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_9_35:
@@ -5025,7 +5105,7 @@ eof_stage_3_9_35:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -5083,6 +5163,7 @@ eof_stage_3_10_18:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_21:
@@ -5142,6 +5223,7 @@ eof_stage_3_10_21:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_22:
@@ -5194,6 +5276,7 @@ eof_stage_3_10_22:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_23:
@@ -5253,7 +5336,7 @@ eof_stage_3_10_23:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -5307,6 +5390,7 @@ eof_stage_3_10_24:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_25:
@@ -5362,6 +5446,7 @@ eof_stage_3_10_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_26:
@@ -5415,6 +5500,7 @@ eof_stage_3_10_26:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_27:
@@ -5470,6 +5556,7 @@ eof_stage_3_10_27:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_28:
@@ -5520,7 +5607,7 @@ eof_stage_3_10_28:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -5578,6 +5665,7 @@ eof_stage_3_10_29:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_31:
@@ -5630,7 +5718,7 @@ eof_stage_3_10_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -5686,6 +5774,7 @@ eof_stage_3_10_32:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_10_33:
@@ -5740,7 +5829,7 @@ eof_stage_3_10_33:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -5794,6 +5883,7 @@ eof_stage_3_10_34:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_14:
@@ -5863,6 +5953,14 @@ eof_stage_3_11_14:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_16:
@@ -5928,6 +6026,14 @@ eof_stage_3_11_16:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_17:
@@ -6003,6 +6109,15 @@ eof_stage_3_11_17:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_18:
@@ -6064,7 +6179,7 @@ eof_stage_3_11_18:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
     NOP ; 2 cycles
@@ -6140,6 +6255,15 @@ eof_stage_3_11_19:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_20:
@@ -6199,6 +6323,7 @@ eof_stage_3_11_20:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_21:
@@ -6264,7 +6389,7 @@ eof_stage_3_11_21:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
@@ -6334,6 +6459,7 @@ eof_stage_3_11_23:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_24:
@@ -6392,6 +6518,7 @@ eof_stage_3_11_24:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_25:
@@ -6452,7 +6579,7 @@ eof_stage_3_11_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     NOP ; 2 cycles
@@ -6516,6 +6643,7 @@ eof_stage_3_11_26:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_27:
@@ -6577,6 +6705,7 @@ eof_stage_3_11_27:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_28:
@@ -6631,7 +6760,7 @@ eof_stage_3_11_28:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -6695,6 +6824,7 @@ eof_stage_3_11_29:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_30:
@@ -6748,6 +6878,14 @@ eof_stage_3_11_30:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_31:
@@ -6805,7 +6943,7 @@ eof_stage_3_11_31:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -6862,6 +7000,7 @@ eof_stage_3_11_32:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_11_34:
@@ -6915,6 +7054,7 @@ eof_stage_3_11_34:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_12_18:
@@ -6970,7 +7110,7 @@ eof_stage_3_12_18:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -7028,6 +7168,7 @@ eof_stage_3_12_20:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_12_21:
@@ -7087,7 +7228,7 @@ eof_stage_3_12_21:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -7144,6 +7285,7 @@ eof_stage_3_12_22:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_12_23:
@@ -7204,6 +7346,7 @@ eof_stage_3_12_23:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_12_25:
@@ -7262,6 +7405,7 @@ eof_stage_3_12_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_12_26:
@@ -7316,7 +7460,7 @@ eof_stage_3_12_26:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -7376,6 +7520,7 @@ eof_stage_3_12_27:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_12_29:
@@ -7433,7 +7578,7 @@ eof_stage_3_12_29:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -7488,7 +7633,7 @@ eof_stage_3_12_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -7545,6 +7690,7 @@ eof_stage_3_12_33:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_14:
@@ -7607,6 +7753,7 @@ eof_stage_3_13_14:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_16:
@@ -7667,7 +7814,7 @@ eof_stage_3_13_16:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -7736,6 +7883,7 @@ eof_stage_3_13_17:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_18:
@@ -7797,6 +7945,7 @@ eof_stage_3_13_18:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_19:
@@ -7861,7 +8010,7 @@ eof_stage_3_13_19:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -7921,6 +8070,11 @@ eof_stage_3_13_20:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -7987,6 +8141,7 @@ eof_stage_3_13_21:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_22:
@@ -8044,6 +8199,7 @@ eof_stage_3_13_22:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_23:
@@ -8106,6 +8262,11 @@ eof_stage_3_13_23:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_24:
@@ -8163,6 +8324,7 @@ eof_stage_3_13_24:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_25:
@@ -8223,6 +8385,7 @@ eof_stage_3_13_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_27:
@@ -8283,6 +8446,7 @@ eof_stage_3_13_27:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_28:
@@ -8337,7 +8501,7 @@ eof_stage_3_13_28:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -8397,7 +8561,7 @@ eof_stage_3_13_29:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -8453,6 +8617,7 @@ eof_stage_3_13_30:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_13_31:
@@ -8509,7 +8674,7 @@ eof_stage_3_13_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -8567,6 +8732,7 @@ eof_stage_3_13_32:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_16:
@@ -8622,6 +8788,10 @@ eof_stage_3_14_16:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_17:
@@ -8681,6 +8851,7 @@ eof_stage_3_14_17:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_18:
@@ -8735,7 +8906,7 @@ eof_stage_3_14_18:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -8797,6 +8968,10 @@ eof_stage_3_14_19:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_20:
@@ -8851,6 +9026,7 @@ eof_stage_3_14_20:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_22:
@@ -8903,7 +9079,7 @@ eof_stage_3_14_22:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -8963,6 +9139,7 @@ eof_stage_3_14_23:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_24:
@@ -9015,6 +9192,7 @@ eof_stage_3_14_24:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_25:
@@ -9070,7 +9248,7 @@ eof_stage_3_14_25:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -9124,6 +9302,10 @@ eof_stage_3_14_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_27:
@@ -9179,6 +9361,7 @@ eof_stage_3_14_27:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_29:
@@ -9232,6 +9415,11 @@ eof_stage_3_14_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_30:
@@ -9284,6 +9472,7 @@ eof_stage_3_14_30:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_14_31:
@@ -9337,6 +9526,7 @@ eof_stage_3_14_31:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_15_16:
@@ -9394,7 +9584,7 @@ eof_stage_3_15_16:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -9461,6 +9651,11 @@ eof_stage_3_15_17:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_15_18:
@@ -9522,7 +9717,7 @@ eof_stage_3_15_18:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -9587,7 +9782,7 @@ eof_stage_3_15_19:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -9647,6 +9842,7 @@ eof_stage_3_15_20:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_15_21:
@@ -9712,7 +9908,7 @@ eof_stage_3_15_21:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -9769,7 +9965,7 @@ eof_stage_3_15_22:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -9832,6 +10028,7 @@ eof_stage_3_15_23:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_15_24:
@@ -9886,6 +10083,7 @@ eof_stage_3_15_24:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_15_26:
@@ -9939,6 +10137,10 @@ eof_stage_3_15_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_15_28:
@@ -9992,6 +10194,7 @@ eof_stage_3_15_28:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_15_29:
@@ -10047,6 +10250,11 @@ eof_stage_3_15_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_16_17:
@@ -10105,6 +10313,7 @@ eof_stage_3_16_17:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_16_18:
@@ -10159,6 +10368,7 @@ eof_stage_3_16_18:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_16_19:
@@ -10216,7 +10426,7 @@ eof_stage_3_16_19:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -10272,7 +10482,7 @@ eof_stage_3_16_20:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -10331,6 +10541,7 @@ eof_stage_3_16_21:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_16_22:
@@ -10384,6 +10595,7 @@ eof_stage_3_16_22:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_16_23:
@@ -10440,7 +10652,7 @@ eof_stage_3_16_23:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -10498,6 +10710,7 @@ eof_stage_3_16_25:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_16_26:
@@ -10548,6 +10761,7 @@ eof_stage_3_16_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_16_27:
@@ -10601,7 +10815,7 @@ eof_stage_3_16_27:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -10657,6 +10871,7 @@ eof_stage_3_16_29:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_18:
@@ -10714,6 +10929,7 @@ eof_stage_3_17_18:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_19:
@@ -10773,7 +10989,7 @@ eof_stage_3_17_19:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -10833,6 +11049,7 @@ eof_stage_3_17_20:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_21:
@@ -10893,6 +11110,7 @@ eof_stage_3_17_21:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_22:
@@ -10948,6 +11166,11 @@ eof_stage_3_17_22:
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_23:
@@ -11008,6 +11231,7 @@ eof_stage_3_17_23:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_24:
@@ -11064,6 +11288,7 @@ eof_stage_3_17_24:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_25:
@@ -11122,6 +11347,11 @@ eof_stage_3_17_25:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_26:
@@ -11175,6 +11405,7 @@ eof_stage_3_17_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_27:
@@ -11234,6 +11465,7 @@ eof_stage_3_17_27:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_17_28:
@@ -11288,6 +11520,7 @@ eof_stage_3_17_28:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_18_19:
@@ -11342,7 +11575,7 @@ eof_stage_3_18_19:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -11397,6 +11630,7 @@ eof_stage_3_18_20:
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_18_21:
@@ -11452,6 +11686,7 @@ eof_stage_3_18_21:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_18_22:
@@ -11505,7 +11740,7 @@ eof_stage_3_18_22:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -11562,6 +11797,7 @@ eof_stage_3_18_23:
     STA WADRL ; 4 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_18_25:
@@ -11617,7 +11853,7 @@ eof_stage_3_18_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -11672,6 +11908,7 @@ eof_stage_3_18_26:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_19_20:
@@ -11726,6 +11963,7 @@ eof_stage_3_19_20:
     LDA #$00 ; 2 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_19_21:
@@ -11788,6 +12026,7 @@ eof_stage_3_19_21:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_19_22:
@@ -11841,7 +12080,7 @@ eof_stage_3_19_22:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
@@ -11900,6 +12139,7 @@ eof_stage_3_19_23:
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_19_24:
@@ -11953,6 +12193,7 @@ eof_stage_3_19_24:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_19_25:
@@ -12008,7 +12249,7 @@ eof_stage_3_19_25:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
@@ -12065,6 +12306,7 @@ eof_stage_3_19_26:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_20_21:
@@ -12122,6 +12364,7 @@ eof_stage_3_20_21:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_20_22:
@@ -12172,6 +12415,7 @@ eof_stage_3_20_22:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_20_23:
@@ -12225,7 +12469,7 @@ eof_stage_3_20_23:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
-    NOP ; 2 cycles
+    LDY #$31 ; 2 cycles
     NOP ; 2 cycles
     STA zpdummy ; 3 cycles
     STA $C030 ; 4 cycles
@@ -12285,6 +12529,11 @@ eof_stage_3_21_23:
     STY WADRH ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
+    NOP ; 2 cycles
+    NOP ; 2 cycles
+    STA zpdummy ; 3 cycles
+    STA $C030 ; 4 cycles
     JMP (WDATA) ; 6 cycles
 
 eof_stage_3_22_23:
@@ -12337,5 +12586,6 @@ eof_stage_3_22_23:
     STA $C030 ; 4 cycles
     LDA #$00 ; 2 cycles
     STA WADRL ; 4 cycles
+    LDY #$31 ; 2 cycles
     JMP (WDATA) ; 6 cycles
 
