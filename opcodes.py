@@ -19,6 +19,8 @@ def voltage_schedule(op: player_op.PlayerOp) -> numpy.ndarray:
     """Returns the 65C02 applied voltage schedule of a player opcode."""
     return op.toggles
 
+FRAME_SIZE  = 2048
+
 
 #@functools.lru_cache(None)
 def opcode_choices(
@@ -30,14 +32,13 @@ def opcode_choices(
     good results, we'll pick the one with the longest cycle count to reduce the
     stream bitrate.
     """
-    if frame_offset == 2046:
+    if frame_offset == FRAME_SIZE - 2:
         return opcodes_generated.EOF_STAGE_1_OPS
-    if frame_offset == 2047:
+    if frame_offset == FRAME_SIZE - 1:
         return opcodes_generated.EOF_STAGE_2_3_OPS[eof_stage_1_op]
 
     return sorted(
         list(opcodes_generated.AUDIO_OPS), key=cycle_length, reverse=True)
-
 
 #@functools.lru_cache(None)
 def opcode_lookahead(
@@ -56,13 +57,13 @@ def opcode_lookahead(
             ops.append((op,))
         else:
             # XXX check this
-            if frame_offset == 2046 and eof_stage_1_op is None:
+            if frame_offset == FRAME_SIZE - 2 and eof_stage_1_op is None:
                 temp_op = op
             else:
                 temp_op = eof_stage_1_op
 
             for res in opcode_lookahead(
-                    (frame_offset + 1) % 2048,
+                    (frame_offset + 1) % FRAME_SIZE,
                     lookahead_cycles - cycle_length(op), temp_op):
                 ops.append((op,) + res)
     return tuple(ops)  # TODO: fix return type
@@ -110,7 +111,7 @@ def candidate_opcodes(
     pruned_cycles = []
     for ops in opcodes:
         cycles = cycle_lookahead(ops, lookahead_cycles)
-        if frame_offset == 2046 and cycles in seen_cycles:
+        if cycles in seen_cycles:
             # print("Dropping", ops, cycles, seen_cycles[cycles])
             continue
         seen_cycles[cycles] = ops
