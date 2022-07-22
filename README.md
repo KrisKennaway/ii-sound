@@ -3,7 +3,7 @@
 High quality audio player for streaming audio over Ethernet, for the Apple II.
 
 Requires:
-*  Uthernet II (currently assumed to be in slot 1)
+*  Uthernet II (currently assumed to be in slot 3)
 *  Enhanced //e or (untested) //gs.  
     * The player should run on 6502 but about 10% _faster_ on a 6502 than 65c02 (and with lower audio quality, until
     the encoder understands this).  See "future work" below.
@@ -39,12 +39,23 @@ where:
 
 TODO: document flags
 
+## Playback
+
+Download the (bootable) Apple II player disk image [here](player/player.dsk)
+
 ## Serving
 
 This runs a HTTP server listening on port 1977 to which the player connects, then unidirectionally streams it the data.
 
 ```
 $ ./play_audio.py <filename.a2s>
+```
+
+A sample audio file can be downloaded [here](examples/adventure.a2s.bz2) ("Adventure" by [Alexander Nakarada](http://www.serpentsoundstudios.com), licensed under [CC BY Attribution 4.0](https://creativecommons.org/licenses/by/4.0/)).  It first needs to be uncompressed, e.g.
+
+```
+% bunzip2 adventure.a2s.bz2
+% ./play_audio adventure.a2s
 ```
 
 # Details

@@ -42,11 +42,11 @@ FADDR:    .byte   10,0,0,1                   ; 10.0.0.1       FOREIGN IP
 FPORT:    .byte   $07,$b9                    ; 1977           FOREIGN PORT
 MAC:      .byte   $00,$08,$DC,$01,$02,$03    ; W5100 MAC ADDRESS
 
-; SLOT 1 I/O ADDRESSES FOR THE W5100
+; SLOT 3 I/O ADDRESSES FOR THE W5100
 ; Change this to support the Uthernet II in another slot
 ;
 ; TODO: make slot I/O addresses customizable at runtime - would probably require somehow
-;   compiling a list of all of the binary offsets at which we reference $C09x and patching
+;   compiling a list of all of the binary offsets at which we reference $C0bx and patching
 ;   them in memory or on-disk.
 WMODE = $C0b4
 WADRH = $C0b5
