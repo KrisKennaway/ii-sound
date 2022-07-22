@@ -8,7 +8,7 @@ objects = $(patsubst %.s,%.o,$(src_files))
 all: $(DISKIMAGE)
 
 %.o : %.s
-	ca65 -t apple2 --cpu 6502 -o $@ $<
+	ca65 -t apple2 --cpu 6502 -o $@ -l player.lst $<
 
 %.system : %.o
 	cl65 -t apple2 -C make/apple2-asm-system.cfg -u __EXEHDR__ --start-addr 0x2000 -o $@ $<

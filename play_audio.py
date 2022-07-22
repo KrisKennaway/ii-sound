@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+#
+# Simple server to stream an .a2s file for playback from Apple II
+
 import socketserver
 import sys
 
 PORT = 1977
+
 
 def main(argv):
     serve_file = argv[1]
