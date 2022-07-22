@@ -1,7 +1,6 @@
 ;
 ;  player.s
 ;
-;  Created by Kris Kennaway on 27/07/2020.
 ;  Copyright © 2020 Kris Kennaway. All rights reserved.
 ;
 ;  Delta modulation audio player for streaming audio over Ethernet.
@@ -49,8 +48,8 @@ MAC:      .byte   $00,$08,$DC,$01,$02,$03    ; W5100 MAC ADDRESS
 ; Change this to support the Uthernet II in another slot
 ;
 ; TODO: make slot I/O addresses customizable at runtime - would probably require somehow
-; compiling a list of all of the binary offsets at which we reference $C09x and patching
-; them in memory or on-disk.
+;   compiling a list of all of the binary offsets at which we reference $C09x and patching
+;   them in memory or on-disk.
 WMODE = $C0b4
 WADRH = $C0b5
 WADRL = $C0b6
@@ -256,37 +255,41 @@ setup:
     ; move player code into $3xx
     LDX #0
 @0:
-    LDA begin_copy_page1,X
+    LDA begin_copy_page3,X
     STA $300,X
     INX
-    CPX #(end_copy_page1 - begin_copy_page1+1)
+    CPX #(end_copy_page3 - begin_copy_page3+1)
     BNE @0
 
     ; clear screen
     jsr HOME
 
-    ; XXX
+    ; We keep our own copy of the W5100 S0RXRD pointer because it's cheaper to maintain a local copy rather than
+    ; asking the W5100 for it in end-of-frame processing.
     lda #$00
     sta RXRD
 
+    ; Wait for socket buffer to have at least 2KB of data in it
     LDX #>S0RXRSR
     STX WADRH
     LDX #<S0RXRSR
 
 fill_socket:
-    LDA #$07 ; 2
+    LDA #$07        ; Wait for at least 8 pages i.e. 2KB of data
 @0:
     STX WADRL       ; #<S0RXRSR
-    CMP WDATA       ; High byte of received size
-    BCS @0          ; in common case when there is already sufficient data waiting.
-    ; There is data to read - we don't care exactly how much because it's at least 2K
-    ; point to start of socket buffer
+    CMP WDATA       ; Check high byte of received size
+    BCS @0          ; Loop if not enough
+    ; There is data to read - we don't care exactly how much but it's at least 2K, which is enough to be sure we can
+    ; process the entirety of the next frame.
+    ;
+    ; Update W5100 address to point to start of socket buffer
     LDX #>RXBASE
     STX WADRH
     LDX #$00
     STX WADRL
 
-    LDY #$31        ; required invariant for core audio loop
+    LDY #$31        ; establish required invariant for core audio loop
     JMP (WDATA)     ; Start playing!
 
 real_exit:
@@ -302,6 +305,8 @@ exit_parmtable:
     .BYTE 0             ; Byte reserved for future use
     .WORD 0000          ; Pointer reserved for future use
 
+; TODO: store this in ZP instead?  Cheaper to access (3 cycles instead of 4) but this tends to make it harder to align
+;   the speaker accesses during EOF processing, since most opcodes we're using have an even cycle length
 RXRD:
     .byte 00
 
@@ -309,18 +314,16 @@ RXRD:
 .include "player_stage2_3_generated.s"
 
 ; Stage 1 player code, which will be copied to $3xx for execution
-begin_copy_page1:
+begin_copy_page3:
 ; generated audio playback code
 .include "player_generated.s"
 
 ; Quit to ProDOS
 exit:
     JMP real_exit
-end_copy_page1:
+end_copy_page3:
 
 .segment "DATA256"
-begin_copy_page8:
 .include "player_stage3_table_generated.s"
-end_copy_page8:
 
 .endproc
