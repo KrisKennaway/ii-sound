@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-# Delta modulation audio encoder.
+# Delta modulation audio encoder for playback via Uthernet II streaming.
 #
 # Simulates the Apple II speaker at 1MHz (i.e. cycle-level) resolution,
-# by modeling it as an RC circuit with given time constant.  In order to
-# reproduce a target audio waveform, we upscale it to 1MHz sample rate,
-# and compute the sequence of player opcodes to best reproduce this waveform.
+# by modeling it as a damped harmonic oscillator.
 #
-# XXX
-# Since the player opcodes are chosen to allow ticking the speaker during any
-# given clock cycle (though with some limits on the minimum time
-# between ticks), this means that we are able to control the Apple II speaker
-# with cycle-level precision, which results in high audio fidelity with low
-# noise.
+# On the Apple II side we use an audio player that is able to toggle the
+# speaker with 1MHz precision, i.e. on any CPU clock cycle, although with a
+# lower limit of 10 cycles between toggles (i.e. 102KHz maximum
+# frequency).
+#
+# In order to reproduce a target audio waveform, we upscale it to 1MHz sample
+# rate, i.e. to determine the desired speaker position at every CPU clock
+# cycle, and compute the sequence of player operations on the Apple II side to
+# best reproduce this waveform.
+#
+# This means that we are able to control the Apple II speaker with cycle-level
+# precision, which results in high audio fidelity with low noise.
 #
 # To further optimize the audio quality we look ahead some defined number of
 # cycles and choose a speaker trajectory that minimizes errors over this range.
@@ -20,9 +24,11 @@
 #
 # This also needs to take into account scheduling the "end of frame" opcode
 # every 2048 output bytes, where the Apple II will manage the TCP socket buffer
-# while ticking the speaker at a regular cadence to keep it in a net-neutral
-# position.  When looking ahead we can also (partially) compensate for this
-# "dead" period by pre-positioning.
+# while ticking the speaker at a regular (a, b) cadence to attempt to
+# continue tracking the waveform as best we can.  Since we are stepping away
+# from cycle-level management of the speaker during this period, it does
+# introduce some quality degradation (manifesting as a slight background
+# "crackle" to the audio)
 
 import argparse
 import collections
@@ -37,17 +43,20 @@ import lookahead
 import opcodes
 import opcodes_generated
 
+# How many bytes to use per frame in the audio stream.  At the end of each
+# frame we need to switch to special end-of-frame operations to cause the
+# Apple II to manage the TCP socket buffers (ACK data received so far, and
+# check we have at least another frame of data available)
+#
+# With an 8KB socket buffer this seems to be about the maximum we can get away
+# with - it has to be page aligned, and 4KB causes stuttering even from a
+# local playback source.
+FRAME_SIZE = 2048
+
 
 def total_error(positions: numpy.ndarray, data: numpy.ndarray) -> numpy.ndarray:
     """Computes the total squared error for speaker position matrix vs data."""
-    # Make sure we handle gracefully when the opcode would take us beyond
-    # the end of data
-    # XXX
-    # min_len = min(len(positions), len(data))
     return numpy.sum(numpy.square(positions - data), axis=-1)
-
-
-FRAME_SIZE = 2048
 
 
 @functools.lru_cache(None)
@@ -65,29 +74,36 @@ def frame_horizon(frame_offset: int, lookahead_steps: int):
 
 
 class Speaker:
+    """Simulates the response of the Apple II speaker."""
+
+    # TODO: move lookahead.evolve into Speaker method
+
     def __init__(self, sample_rate: float, freq: float, damping: float,
                  scale: float):
+        """Initialize the Speaker object
+
+        :arg sample_rate The sample rate of the simulated speaker (Hz)
+        :arg freq The resonant frequency of the speaker
+        :arg damping The exponential decay factor of the speaker response
+        :arg scale Scale factor to normalize speaker position to desired range
+        """
         self.sample_rate = sample_rate
         self.freq = freq
         self.damping = damping
+        self.scale = numpy.float64(scale)  # TODO: analytic expression
+
+        # See _Signal Processing in C_, C. Reid, T. Passin
+        # https://archive.org/details/signalprocessing0000reid/
 
         dt = numpy.float64(1 / sample_rate)
-
         w = numpy.float64(freq * 2 * numpy.pi * dt)
 
         d = damping * dt
         e = numpy.exp(d)
         c1 = 2 * e * numpy.cos(w)
-
         c2 = e * e
-        # t0 = (1 - 2 * e * numpy.cos(w) + e * e) / (d * d + w * w)
-        # t = d * d + w * w - numpy.pi * numpy.pi
-        # t1 = (1 + 2 * e * numpy.cos(w) + e * e) / numpy.sqrt(t * t + 4 * d * d *
-        #                                                      numpy.pi * numpy.pi)
-        # b2 = (t1 - t0) / (t1 + t0)
-        # b1 = b2 * dt * dt * (t0 + t1) / 2
 
-        # Square wave impulse
+        # Square wave impulse response parameters
         b2 = 0.0
         b1 = 1.0
 
@@ -95,8 +111,6 @@ class Speaker:
         self.c2 = c2
         self.b1 = b1
         self.b2 = b2
-
-        self.scale = numpy.float64(scale)  # TODO: analytic expression
 
 
 def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
@@ -117,19 +131,13 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     # range for convenience.
     inv_scale = 22400 * 0.07759626164027278  # XXX
 
-    # inv_scale = 15000 * 0.1102744481718292
-    #
-    # inv_scale = 115954.98423621713
     # Starting speaker applied voltage.
     voltage1 = voltage2 = 1.0
     # last 2 speaker positions.
+    # XXX 0.0?
     y1 = y2 = 1.0
 
-    toggles = 0
-
     sp = Speaker(sample_rate, freq=3875, damping=-1210, scale=1 / inv_scale)
-    # sp = Speaker(sample_rate, freq=3968, damping=-1800, scale=1 / inv_scale)
-    # sp = Speaker(sample_rate, freq=475, damping=-210, scale=1 / inv_scale)
 
     total_err = 0.0  # Total squared error of audio output
     frame_offset = 0  # Position in 2048-byte TCP frame
@@ -141,20 +149,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
     clicks = 0
     min_lookahead_steps = lookahead_steps
-    # next_step = sample_rate
-
-    # data = (numpy.arange(sample_rate) / sample_rate - 0.5).astype(
-    #     numpy.float32)
-
-    # dlen = len(data)
     while i < dlen // 1:
-        # if i > next_step:
-        #     next_step += sample_rate
-        #     inv_scale += 100
-        #     print("XXX scale %d" % inv_scale)
-        #     sp = Speaker(sample_rate, freq=3875, damping=-1210,
-        #                  scale=1 / inv_scale)
-
         if i >= next_tick:
             eta.print_status()
             next_tick = int(eta.i * dlen / 1000)
@@ -177,7 +172,6 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         opcode = next_candidate_opcodes[opcode_idx]
         opcode_length = opcodes.cycle_length(opcode)
         opcode_counts[opcode] += 1
-        # toggles += opcodes.TOGGLES[opcode]
 
         # Apply this opcode to evolve the speaker position
         opcode_voltages = (voltage1 * opcodes.voltage_schedule(
@@ -200,11 +194,6 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
             print(frame_offset, i / sample_rate, opcode, new_error,
                   numpy.mean(data[i:i + opcode_length]))
 
-        # print(frame_offset, i / sample_rate, opcode)
-        # for v in all_positions[0]:
-        #     print(v * sp.scale)
-        # if frame_offset == 2047:
-        #     print(opcode)
         yield opcode, numpy.array(
             all_positions * sp.scale, dtype=numpy.float32).reshape(-1)
 
@@ -217,8 +206,6 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
     #     yield opcodes.Opcode.EXIT
     eta.done()
     print("Total error %f" % total_err)
-    toggles_per_sec = toggles / dlen * sample_rate
-    print("%d speaker toggles/sec" % toggles_per_sec)
 
     print("Opcodes used:")
     for v, k in sorted(list(opcode_counts.items()), key=lambda kv: kv[1],
@@ -234,14 +221,6 @@ def preprocess(
 
     data, _ = librosa.load(filename, sr=target_sample_rate, mono=True)
 
-    # data = []
-    # freq = 926
-    # data.extend(numpy.sin(numpy.arange(target_sample_rate * 1) * (
-    #             2 * numpy.pi / (target_sample_rate / freq))).astype(
-    #     numpy.float32))
-    # # freq *= 1.05
-    # data = numpy.array(data, dtype=numpy.float32)
-
     max_value = numpy.percentile(data, normalization_percentile)
     data /= max_value
     data *= normalize
@@ -251,15 +230,10 @@ def preprocess(
 
 def resample_output(output_buffer, input_audio, sample_rate, output_rate,
                     noise_output=False):
-    try:
-        resampled_output = librosa.resample(
-            numpy.array(output_buffer, dtype=numpy.float32),
-            orig_sr=sample_rate,
-            target_sr=output_rate)
-    except:
-        for i in output_buffer:
-            print(i)
-        raise
+    resampled_output = librosa.resample(
+        numpy.array(output_buffer, dtype=numpy.float32),
+        orig_sr=sample_rate,
+        target_sr=output_rate)
 
     resampled_noise = None
     if noise_output:
@@ -335,7 +309,6 @@ def main():
                 input_audio, args.step_size, args.lookahead_cycles,
                 sample_rate)):
             opcode, samples = sample_data
-            # print(hex(idx), opcode, hex(opcode.byte))
             opcode_f.write(bytes([opcode.byte]))
 
             output_buffer.extend(samples)
@@ -372,13 +345,6 @@ def main():
                 wav_f.write(resampled_output_buffer)
             if args.noise_output:
                 noise_f.write(resampled_noise_buffer)
-
-    # with  as f:
-    #     for opcode in audio_bytestream(
-    #             preprocess(args.input, sample_rate, args.normalization,
-    #                        args.norm_percentile), args.step_size,
-    #             args.lookahead_cycles, sample_rate, args.cpu == '6502'):
-    #         f.write(bytes([opcode.value]))
 
 
 if __name__ == "__main__":
