@@ -38,6 +38,7 @@ import librosa
 import numpy
 import soundfile as sf
 from eta import ETA
+from typing import Tuple
 
 import lookahead
 import opcodes
@@ -75,7 +76,6 @@ class Speaker:
 
         # See _Signal Processing in C_, C. Reid, T. Passin
         # https://archive.org/details/signalprocessing0000reid/
-
         dt = numpy.float64(1 / sample_rate)
         w = numpy.float64(freq * 2 * numpy.pi * dt)
 
@@ -92,7 +92,6 @@ class Speaker:
         self.c2 = c2
         self.b1 = b1
         self.b2 = b2
-
 
 def total_error(positions: numpy.ndarray, data: numpy.ndarray) -> numpy.ndarray:
     """Computes the total squared error for speaker position matrix vs data."""
