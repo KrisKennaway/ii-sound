@@ -1,0 +1,5 @@
+SoundFile~=0.10.3.post1
+numpy~=1.21.6
+Cython~=0.29.28
+librosa~=0.9.1
+eta~=0.9.7
