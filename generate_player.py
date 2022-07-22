@@ -326,12 +326,12 @@ EOF_STAGE_3_BASE = [
 
 
 def validate_stage_3_ops(op_seq, a, b):
-    toggles = opcodes_6502.join_toggles(op_seq)
+    voltages = opcodes_6502.join_voltages(op_seq)
     toggle_cadence = itertools.chain([4], itertools.cycle([a, b]))
     last = 1.0
     expected_count = next(toggle_cadence)
     # print(op_seq, a, b)
-    for t in toggles:
+    for t in voltages:
         expected_count -= 1
         # print(expected_count, t)
         if t != last:
@@ -367,24 +367,24 @@ def generate_player(
         # Audio operations
         audio_player_ops: Dict[str, player_op.PlayerOp] = {}
         page_3_offset = 0
-        seen_op_suffix_toggles = set()
+        seen_op_suffix_voltages = set()
         for i, ops in enumerate(audio_opcodes()):
             player_ops = []
             # Generate unique entrypoints
             for j, op in enumerate(ops):
-                op_suffix_toggles = opcodes_6502.toggles(ops[j:])
-                if op_suffix_toggles not in seen_op_suffix_toggles:
+                op_suffix_voltages = opcodes_6502.voltages(ops[j:])
+                if op_suffix_voltages not in seen_op_suffix_voltages:
                     # new subsequence
-                    seen_op_suffix_toggles.add(op_suffix_toggles)
+                    seen_op_suffix_voltages.add(op_suffix_voltages)
                     player_ops.append(
                         opcodes_6502.Literal(
                             "tick_%02x: ; voltages %s" % (
-                                page_3_offset, op_suffix_toggles), indent=0))
+                                page_3_offset, op_suffix_voltages), indent=0))
                     op_name = "TICK_%02x" % page_3_offset
                     audio_player_ops[op_name] = player_op.PlayerOp(
                         name=op_name,
                         byte=page_3_offset,
-                        toggles=numpy.array(op_suffix_toggles))
+                        voltages=numpy.array(op_suffix_voltages))
                 player_ops.append(op)
                 page_3_offset += op.bytes
 
@@ -408,7 +408,7 @@ def generate_player(
             stage_1_ops[op_name] = player_op.PlayerOp(
                 name=op_name,
                 byte=page_3_offset,
-                toggles=numpy.array(opcodes_6502.toggles(eof_stage1_ops)))
+                voltages=numpy.array(opcodes_6502.voltages(eof_stage1_ops)))
             page_3_offset += opcodes_6502.total_bytes(eof_stage1_ops)
 
         # Write special-case (10,10) duty cycle EOF stage 1 operation
@@ -420,7 +420,7 @@ def generate_player(
         stage_1_ops[op_name] = player_op.PlayerOp(
             name=op_name,
             byte=page_3_offset,
-            toggles=numpy.array(opcodes_6502.toggles(EOF_STAGE1_10_10_OPS))
+            voltages=numpy.array(opcodes_6502.voltages(EOF_STAGE1_10_10_OPS))
         )
         page_3_offset += opcodes_6502.total_bytes(EOF_STAGE1_10_10_OPS)
 
@@ -457,7 +457,7 @@ def generate_player(
         stage_2_3_ops[op_name] = player_op.PlayerOp(
             name=op_name,
             byte=0xff,  # Dummy
-            toggles=numpy.array(opcodes_6502.toggles(eof_10_10_stage2_ops))
+            voltages=numpy.array(opcodes_6502.voltages(eof_10_10_stage2_ops))
         )
         stage_2_ops_by_stage_1_op.setdefault(
             "END_OF_FRAME_10_10_STAGE1", []).append(op_name)
@@ -517,7 +517,7 @@ def generate_player(
             stage_2_3_ops[name] = player_op.PlayerOp(
                 name=name,
                 byte=offset,
-                toggles=numpy.array(opcodes_6502.join_toggles(
+                voltages=numpy.array(opcodes_6502.join_voltages(
                     [EOF_TRAMPOLINE_STAGE2[a], stage_3_ops]))
             )
             stage_2_ops_by_stage_1_op.setdefault(
@@ -583,8 +583,6 @@ def generate_player(
 
         f.write("\n")
 
-        # TODO: count toggles
-
 
 def main():
     generate_player(
@@ -593,6 +591,7 @@ def main():
         player_stage2_filename="player/player_stage2_3_generated.s",
         player_stage3_table_filename="player/player_stage3_table_generated.s"
     )
+
 
 if __name__ == "__main__":
     main()

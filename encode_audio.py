@@ -96,7 +96,12 @@ class Speaker:
 
 def total_error(positions: numpy.ndarray, data: numpy.ndarray) -> numpy.ndarray:
     """Computes the total squared error for speaker position matrix vs data."""
-    return numpy.sum(numpy.square(positions - data), axis=-1)
+
+    # Deal gracefully with the case where our speaker operation would slightly
+    # run past the end of data
+    min_len = min(len(positions), len(data))
+    return numpy.sum(numpy.square(positions[:min_len] - data[:min_len]),
+                     axis=-1)
 
 
 @functools.lru_cache(None)
@@ -223,8 +228,7 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
         opcode_counts[opcode] += 1
 
         # Apply this opcode to evolve the speaker position
-        opcode_voltages = (voltage1 * opcodes.voltage_schedule(
-            opcode)).reshape((1, -1))
+        opcode_voltages = (voltage1 * opcode.voltages).reshape((1, -1))
         all_positions = lookahead.evolve(
             sp, y1, y2, voltage1, voltage2, opcode_voltages)
 
@@ -306,7 +310,7 @@ def downsample_audio(simulated_audio, original_audio, input_rate, output_rate,
     downsampled_noise = None
     if noise_output:
         noise_len = min(len(simulated_audio), len(original_audio))
-        resampled_noise = librosa.resample(
+        downsampled_noise = librosa.resample(
             numpy.array(
                 simulated_audio[:noise_len] - original_audio[:noise_len]),
             orig_sr=input_rate,
@@ -402,7 +406,7 @@ def main():
                 continue
 
             # TODO: don't bother computing if we're not writing wavs
-            downsampled_audio, downsampled_noise = downsampled_audio(
+            downsampled_audio, downsampled_noise = downsample_audio(
                 output_buffer, input_audio[input_offset - len(output_buffer):],
                 cpu_clock_rate, output_rate, bool(args.noise_output)
             )
@@ -417,7 +421,7 @@ def main():
 
         # TODO: handle last buffer more cleanly than duplicating this code
         if output_buffer:
-            downsampled_audio, downsampled_noise = downsampled_audio(
+            downsampled_audio, downsampled_noise = downsample_audio(
                 output_buffer, input_audio[input_offset - len(output_buffer):],
                 cpu_clock_rate, output_rate, bool(args.noise_output)
             )

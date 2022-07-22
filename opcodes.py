@@ -22,7 +22,7 @@ FRAME_SIZE = 2048
 
 def cycle_length(op: player_op.PlayerOp) -> int:
     """Returns the cycle length of a player opcode."""
-    return len(op.toggles)
+    return len(op.voltages)
 
 
 def opcode_choices(
@@ -80,7 +80,7 @@ def cycle_lookahead(
     cycles = []
     last_voltage = 1.0
     for op in opcodes:
-        cycles.extend(last_voltage * op.toggles)
+        cycles.extend(last_voltage * op.voltages)
         last_voltage = cycles[-1]
     return tuple(cycles[:lookahead_cycles])
 
