@@ -5,34 +5,32 @@
 ;
 ;  Delta modulation audio player for streaming audio over Ethernet.
 ;
-;  How this works is by modeling the Apple II speaker as an RC circuit.  Delta modulation with an RC circuit is often
-;  called "BTC", after https://www.romanblack.com/picsound.htm.
+;  The encoder works by modeling the Apple II speaker as an RLC circuit and encoding audio using delta modulation.
+;  The resulting audio stream causes the Apple II speaker to precisely trace out the desired waveform.
 ;
-;  When we tick the speaker it inverts the applied voltage across it, and the speaker responds by moving asymptotically
-;  towards the new level.  With some empirical tuning of the time constant of this RC circuit (which seems to be about
-;  500 us), we can precisely model how the speaker will respond to voltage changes, and use this to make the speaker
-;  "trace out" our desired waveform.  We can't do this precisely -- the speaker will zig-zag around the target waveform
-;  because we can only move it in finite steps -- so there is some left-over quantization noise that manifests as
-;  background static.
+;  When we tick the speaker it inverts the applied voltage across it, and the speaker responds by oscillating with
+;  an exponential decay towards the new level.  By matching the speaker response parameters to actual hardware we can
+;  precisely model how the speaker will respond to voltage changes, and use this to make the speaker "trace out" our
+;  desired waveform.  We can't do this precisely -- the speaker will zig-zag around the target waveform because we can
+;  only move it in finite steps -- so there is some left-over quantization noise that manifests as background static.
 ;
 ;  This player is capable of manipulating the speaker with 1-cycle precision, i.e. a 1MHz sampling rate, depending on
 ;  how the "player opcodes" are chained together by the ethernet bytestream.  The catch is that once we have toggled
 ;  the speaker we can't toggle it again until at least 10 cycles have passed, but we can pick any interval >= 10 cycles
-;  (except for 11 because of 6502 opcode timing limitations).
 ;
 ;  Some other tricks used here:
 ;
-;  - The minimal 9-cycle speaker loop is: STA $C030; JMP (WDATA), where we use an undocumented property of the
+;  - The minimal 10-cycle speaker loop is: STA $C030; JMP (WDATA), where we use an undocumented property of the
 ;    Uthernet II: I/O registers on the WDATA don't wire up all of the address lines, so they are also accessible at
 ;    other address offsets.  In particular WDATA+1 is a duplicate copy of WMODE.  In our case WMODE happens to be 0x3.
 ;    This lets us use WDATA as a jump table into page 3, where we place our player code.  We then choose the network
 ;    byte stream to contain the low-order byte of the target address we want to jump to next.
-;  - Since our 13-cycle period gives us 4 "spare" cycles over the minimal 9, that also lets us do a page-flipping trick
-;    to visualize the audio bitstream while playing.
 ;  - As with my ][-Vision streaming video+audio player, we schedule a "slow path" dispatch to occur every 2KB in the
 ;    byte stream, and use this to manage the socket buffers (ACK the read 2KB and wait until at least 2KB more is
-;    available, which is usually non-blocking).  While doing this we need to maintain the 13 cycle cadence so the
+;    available, which is usually non-blocking).  While doing this we need to maintain a regular (a, b) cadence so the
 ;    speaker is in a known trajectory.  We can compensate for this in the audio encoder.
+;
+; TODO: explain the two-stage dispatch for end-of-frame processing
 
 .proc main
 init:
