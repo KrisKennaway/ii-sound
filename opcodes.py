@@ -1,28 +1,30 @@
 import functools
-import numpy
 from typing import List, Tuple
+
+import numpy
 
 import opcodes_generated
 import player_op
 
 
-# PlayerOps = opcodes_generated.PlayerOps
-# TOGGLES = opcodes_generated.TOGGLES
+# How many bytes to use per frame in the audio stream.  At the end of each
+# frame we need to switch to special end-of-frame operations to cause the
+# Apple II to manage the TCP socket buffers (ACK data received so far, and
+# check we have at least another frame of data available)
+#
+# With an 8KB socket buffer this seems to be about the maximum we can get away
+# with - it has to be page aligned, and 4KB causes stuttering even from a
+# local playback source.
+#
+# TODO: share this with encode_audio.py
+FRAME_SIZE = 2048
 
 
 def cycle_length(op: player_op.PlayerOp) -> int:
-    """Returns the 65[C]02 cycle length of a player opcode."""
+    """Returns the cycle length of a player opcode."""
     return len(op.toggles)
 
 
-def voltage_schedule(op: player_op.PlayerOp) -> numpy.ndarray:
-    """Returns the 65C02 applied voltage schedule of a player opcode."""
-    return op.toggles
-
-FRAME_SIZE  = 2048
-
-
-#@functools.lru_cache(None)
 def opcode_choices(
         frame_offset: int,
         eof_stage_1_op: player_op.PlayerOp = None) -> List[player_op.PlayerOp]:
@@ -40,7 +42,7 @@ def opcode_choices(
     return sorted(
         list(opcodes_generated.AUDIO_OPS), key=cycle_length, reverse=True)
 
-#@functools.lru_cache(None)
+
 def opcode_lookahead(
         frame_offset: int,
         lookahead_cycles: int,
@@ -51,8 +53,6 @@ def opcode_lookahead(
     ch = opcode_choices(frame_offset, eof_stage_1_op)
     ops = []
     for op in ch:
-        # if frame_offset == 2046:
-        #     print("Considering %s" % op)
         if cycle_length(op) >= lookahead_cycles:
             ops.append((op,))
         else:
@@ -69,7 +69,6 @@ def opcode_lookahead(
     return tuple(ops)  # TODO: fix return type
 
 
-#@functools.lru_cache(None)
 def cycle_lookahead(
         opcodes: Tuple[player_op.PlayerOp],
         lookahead_cycles: int) -> Tuple[float]:
@@ -81,7 +80,7 @@ def cycle_lookahead(
     cycles = []
     last_voltage = 1.0
     for op in opcodes:
-        cycles.extend(last_voltage * voltage_schedule(op))
+        cycles.extend(last_voltage * op.toggles)
         last_voltage = cycles[-1]
     return tuple(cycles[:lookahead_cycles])
 
@@ -97,8 +96,6 @@ def candidate_opcodes(
     lookahead_cycles, retains the first such opcode sequence.
     """
     opcodes = opcode_lookahead(frame_offset, lookahead_cycles, eof_stage_1_op)
-    # if frame_offset >= 2046:
-    #     print(opcodes)
     # Look ahead over the common cycle subsequence to make sure we see as far
     # as possible into the future
     cycles = []
@@ -112,7 +109,6 @@ def candidate_opcodes(
     for ops in opcodes:
         cycles = cycle_lookahead(ops, lookahead_cycles)
         if cycles in seen_cycles:
-            # print("Dropping", ops, cycles, seen_cycles[cycles])
             continue
         seen_cycles[cycles] = ops
         pruned_opcodes.append(ops[0])
