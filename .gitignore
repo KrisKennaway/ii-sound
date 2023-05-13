@@ -3,3 +3,14 @@
 *.a2s
 *.mp3
 *.flac
+
+__pycache__/
+dist/
+build/
+*.egg-info/
+
+.vscode
+.venv
+
+lookahead.c
+lookahead.html
