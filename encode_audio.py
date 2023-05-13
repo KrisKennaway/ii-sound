@@ -370,14 +370,14 @@ def main():
     else:
         # We're not creating a file but still need a context
         # XXX does this work?
-        wav_context = contextlib.nullcontext
+        wav_context = contextlib.nullcontext()
     if args.noise_output:
         noise_context = sf.SoundFile(
             args.noise_output, "w", output_rate, channels=1,
             format='WAV')
     else:
         # We're not creating a file but still need a context
-        noise_context = contextlib.nullcontext
+        noise_context = contextlib.nullcontext()
 
     with wav_context as wav_f, noise_context as noise_f, opcode_context \
             as opcode_f:
