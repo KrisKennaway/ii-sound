@@ -331,7 +331,7 @@ def main():
     #  opcode then this will reduce quality, e.g. two opcodes may truncate to
     #  the same prefix, but have different results when we apply them
     #  fully.
-    parser.add_argument("--lookahead_cycles", type=int,
+    parser.add_argument("--lookahead_cycles", type=int, default=30,
                         help="Number of clock cycles to look ahead in audio "
                              "stream.")
     parser.add_argument("--normalization", default=0.8, type=float,
