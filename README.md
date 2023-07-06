@@ -21,7 +21,7 @@ as possible.
 The resulting audio file causes the Apple II to follow this speaker trajectory with cycle-level precision when it is
 played, and typically ends up toggling the speaker about 100,000 times/second.
 
-TODO: link KansasFest 2022 slides/video
+For more details, see my KansasFest 2022 presentation ([video](https://www.youtube.com/watch?v=o7zE7rPMarU), [slides](https://docs.google.com/presentation/d/1Vu8WlmHKyLXncRjTdG-Aq3sffmEu_JL34b2l1z-_dXg/edit?usp=sharing))
 
 ## Usage
 
