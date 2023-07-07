@@ -252,7 +252,8 @@ def audio_bytestream(data: numpy.ndarray, step: int, lookahead_steps: int,
 
         # Emit chosen operation and simulated audio samples for recording
         yield opcode, numpy.array(
-            all_positions * sp.scale, dtype=numpy.float32).reshape(-1)
+            all_positions * sp.scale, dtype=numpy.float32).reshape(-1), \
+            opcode_voltages.reshape(-1)
 
         # Update input and output stream positions
         i += opcode_length
@@ -331,7 +332,7 @@ def main():
     #  opcode then this will reduce quality, e.g. two opcodes may truncate to
     #  the same prefix, but have different results when we apply them
     #  fully.
-    parser.add_argument("--lookahead_cycles", type=int,
+    parser.add_argument("--lookahead_cycles", type=int, default=30,
                         help="Number of clock cycles to look ahead in audio "
                              "stream.")
     parser.add_argument("--normalization", default=0.8, type=float,
@@ -342,6 +343,7 @@ def main():
                              "audio")
     parser.add_argument("--wav_output", type=str, help="output audio file")
     parser.add_argument("--noise_output", type=str, help="output audio file")
+    parser.add_argument("--volt_output", type=str, help="1MHz square wav file")
     parser.add_argument("input", type=str, help="input audio file to convert")
     parser.add_argument("output", type=str, help="output audio file")
     args = parser.parse_args()
@@ -361,6 +363,7 @@ def main():
     # Buffers simulated audio output so we can downsample it in suitably
     # large chunks for writing to the output .wav file
     output_buffer = []
+    output_voltage = []
 
     # Python contexts for writing output files if requested
     opcode_context = open(args.output, "wb+")
@@ -370,30 +373,40 @@ def main():
     else:
         # We're not creating a file but still need a context
         # XXX does this work?
-        wav_context = contextlib.nullcontext
+        wav_context = contextlib.nullcontext()
     if args.noise_output:
         noise_context = sf.SoundFile(
             args.noise_output, "w", output_rate, channels=1,
             format='WAV')
     else:
         # We're not creating a file but still need a context
-        noise_context = contextlib.nullcontext
+        noise_context = contextlib.nullcontext()
+    if args.volt_output:
+        # output original square wave at 1MHz
+        volt_context = sf.SoundFile(
+            args.volt_output, "w", cpu_clock_rate, channels=1,
+            format='WAV')
+    else:
+        # We're not creating a file but still need a context
+        volt_context = contextlib.nullcontext()
 
-    with wav_context as wav_f, noise_context as noise_f, opcode_context \
-            as opcode_f:
+    with wav_context as wav_f, noise_context as noise_f, volt_context \
+            as volt_f, opcode_context as opcode_f:
         # Tracks current position in input audio waveform
         input_offset = 0
 
         # Process input audio, writing output to ][-Sound audio file
-        # and (if requested) .wav files of simulated speaker audio and
-        # noise (difference between original and simulated audio)
+        # and (if requested) .wav files of simulated speaker audio,
+        # noise (difference between original and simulated audio) and
+        # voltages
         for idx, sample_data in enumerate(audio_bytestream(
                 input_audio, args.step_size, args.lookahead_cycles,
                 cpu_clock_rate)):
-            opcode, samples = sample_data
+            opcode, samples, voltages = sample_data
             opcode_f.write(bytes([opcode.byte]))
 
             output_buffer.extend(samples)
+            output_voltage.extend(voltages)
             input_offset += len(samples)
             # Keep accumulating as long as we have <1MB in the buffer, or are
             # within 1MB from the end.  This ensures we have enough samples to
@@ -415,8 +428,12 @@ def main():
             if args.noise_output:
                 noise_f.write(downsampled_noise)
                 noise_f.flush()
+            if args.volt_output:
+                volt_f.write(output_voltage)
+                volt_f.flush()
 
             output_buffer = []
+            output_voltage = []
 
         # TODO: handle last buffer more cleanly than duplicating this code
         if output_buffer:
@@ -428,6 +445,11 @@ def main():
                 wav_f.write(downsampled_audio)
             if args.noise_output:
                 noise_f.write(downsampled_noise)
+
+        if output_voltage:
+            if args.volt_output:
+                volt_f.write(output_voltage)
+                volt_f.flush()
 
 
 if __name__ == "__main__":
